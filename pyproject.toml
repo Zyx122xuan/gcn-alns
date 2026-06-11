@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gcnalns"
+version = "0.1.0"
+description = "Recovery-Latency-Constrained Hybrid Fault-Tolerant Scheduling for DAG Workflows in the Computing Continuum (GCN-ALNS)"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

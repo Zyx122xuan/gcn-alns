@@ -1,0 +1,165 @@
+# =============================================================================
+# Central configuration for RLC-HFTSP / GCN-ALNS experiments.
+# Every algorithm and the recovery verifier read SLA/fault/cost parameters from
+# here so that all methods are evaluated under identical assumptions.
+# =============================================================================
+
+# ---- Standard / base compute reference --------------------------------------
+# f_std: standard node compute capability used to convert Pegasus job runtime
+# into workload p_i = runtime_i * f_std (units: MI when runtime in s, f_std in MI/s).
+f_std: 1000.0
+
+# ---- Recovery timing constants (Implementation Spec sec.8 / sec.9) ----------
+recovery:
+  delta_detect: 1.0      # delta^det  (s)
+  delta_replan: 0.5      # delta^replan (s) global re-planning time (passive)
+  delta_switch: 0.5      # delta^sw   (s)
+  delta_sync: 0.5        # delta^sync (s)
+  delta_link_rec: 2.0    # delta^link_rec (s) logical link recovery wait
+
+# ---- SLA scenarios (Implementation Spec sec.7) ------------------------------
+# D = alpha * T_ref ; R_max = beta * T_ref   (T_ref = HEFT-NoFT base makespan)
+sla:
+  scenarios:
+    tight:  {alpha: 1.15, beta: 0.05}
+    medium: {alpha: 1.30, beta: 0.10}
+    loose:  {alpha: 1.50, beta: 0.20}
+  default_scenario: medium
+
+# ---- Computing-continuum layering (Implementation Spec sec.3, sec.4) --------
+layering:
+  # node quality score q_k = 0.5*cap + 0.25*(1-load) + 0.25*(1-var)
+  q_weights: {cap: 0.5, load: 0.25, var: 0.25}
+  # capacity score cap_k = 0.5*norm(cpu_cap) + 0.5*norm(mem_cap)
+  cap_weights: {cpu: 0.5, mem: 0.5}
+  # split fractions by descending q_k
+  split: {cloud: 0.20, edge: 0.50, device: 0.30}
+  # effective compute f_k = f_std * (0.5 + 2.5 * cap_k)
+  fk_base: 0.5
+  fk_scale: 2.5
+  # per-layer defaults
+  layers:
+    cloud:  {cost_coef: 1.0, base_failure_rate: 1.0e-6}
+    edge:   {cost_coef: 0.6, base_failure_rate: 5.0e-6}
+    device: {cost_coef: 0.3, base_failure_rate: 1.0e-5}
+  # lambda_k = lambda_layer * (1 + g1*load + g2*var)
+  failure_load_gamma1: 0.5
+  failure_var_gamma2: 0.5
+
+# ---- Fault domains (Implementation Spec sec.5) ------------------------------
+fault_domain:
+  groups: {cloud: 8, edge: 12, device: 20}
+
+# ---- Link parameters (Implementation Spec sec.6) ----------------------------
+links:
+  local_latency: 0.001     # s, for k == l
+  local_bandwidth: .inf    # effectively infinite local bandwidth
+  perturb_seed: 2026
+  perturb_low: 0.8
+  perturb_high: 1.2
+  # base table keyed by sorted layer pair "a-b": [bandwidth MB/s, latency s, failure_rate]
+  table:
+    cloud-cloud:   {bw: 100.0, lat: 0.002, fail: 1.0e-6}
+    cloud-edge:    {bw: 50.0,  lat: 0.010, fail: 3.0e-6}
+    edge-edge:     {bw: 40.0,  lat: 0.015, fail: 5.0e-6}
+    device-edge:   {bw: 15.0,  lat: 0.040, fail: 8.0e-6}
+    cloud-device:  {bw: 10.0,  lat: 0.060, fail: 1.0e-5}
+    device-device: {bw: 8.0,   lat: 0.080, fail: 1.5e-5}
+
+# ---- Structural criticality weights (Modeling doc sec.11.1) -----------------
+# h_i = theta1 * norm(ranku) + theta2 * norm(1/(slack+eps)) + theta3 * norm(outdeg)
+criticality:
+  theta1: 0.4
+  theta2: 0.4
+  theta3: 0.2
+  eps: 1.0e-6
+
+# ---- Cost model (Modeling doc sec.10) ---------------------------------------
+cost:
+  comm_cost_coef: 0.01     # rho_kl, unit data-transfer cost ($/MB)
+  reserve_cost_coef: 0.1   # rho^res, unit cost of reserved recovery resources
+  recovery_cost_weight: 1.0
+
+# ---- Dynamic-reschedule RecCost weights (Implementation Spec sec.12) --------
+# RecCost = t1*wait + t2*comm_in + t3*exec + t4*risk + t5*cost
+rec_cost:
+  theta1: 1.0
+  theta2: 1.0
+  theta3: 1.0
+  theta4: 0.5
+  theta5: 0.2
+
+# ---- ALNS insertion cost weights (Implementation Spec sec.15) ---------------
+# InsertCost = w1*ECT + w2*Cost + w3*Risk + w4*RecRisk + w5*Load - w6*GCNScore
+insert_cost:
+  w1: 1.0
+  w2: 0.5
+  w3: 1.0
+  w4: 2.0
+  w5: 0.5
+  w6: 1.0
+
+# ---- ALNS search parameters (Implementation Spec sec.15) --------------------
+alns:
+  max_iter: 1000
+  max_removal_frac: 0.20
+  m_max: 2                 # max active replicas
+  initial_temperature: 1.0
+  cooling_rate: 0.995
+  repeats: 10
+  segment_length: 50       # iterations per adaptive-weight update segment
+  reaction_factor: 0.1     # operator weight smoothing
+  scores: {best: 33.0, better: 9.0, accepted: 13.0}
+  no_improve_stop: 300     # terminate after this many non-improving iterations
+  recovery_penalty_weight: 100.0   # Phi penalty on max(0, R_max - R_eff)
+  deadline_penalty_weight: 200.0   # penalty on max(0, C_base - D)
+
+# ---- GCN model + training (Implementation Spec sec.16, sec.17, 5.5.7) -------
+gcn:
+  num_layers: 2
+  hidden_dim: 64
+  out_dim: 1
+  dropout: 0.3
+  emb_dim: 8                    # fault-domain embedding dimension
+  knn_k: 8                      # physical-graph kNN degree (by comm delay)
+  comm_neighbor_sample: 64      # nodes sampled to estimate per-node mean link stats
+  activation: relu
+  optimizer: adam
+  learning_rate: 1.0e-3
+  weight_decay: 5.0e-4
+  batch_size: 256
+  max_epochs: 100
+  early_stop_patience: 10
+  neg_per_pos: 5
+  rank_loss_weight: 0.1
+  l2_reg: 1.0e-4
+  high_quality_top_frac: 0.20   # top 20% feasible solutions by cost
+  split: {train: 0.70, val: 0.15, test: 0.15}
+  model_path: results/gcn_model.pt   # default trained-model location for GCN-ALNS
+
+# ---- Reproducibility seeds (Implementation Spec sec.21) ---------------------
+seeds:
+  global: 2026
+  node_sampling: 2026
+  link_generation: 2026
+  alns: 2026
+  gcn_training: 2026
+  split: 2026
+
+# ---- Experiment scenario scales (sec.5.6) -----------------------------------
+scales:
+  workflow_tasks: {small: 50, medium: 150, large: 500}
+  resource_nodes: {small: 50, medium: 150, large: 500}
+  load_levels:
+    low:    {util_low: 0.05, util_high: 0.30}
+    medium: {util_low: 0.30, util_high: 0.60}
+    high:   {util_low: 0.60, util_high: 0.90}
+
+# ---- Workflow types (sec.5.6.1) ---------------------------------------------
+workflow_types: [Montage, CyberShake, Epigenomics, LIGO, SIPHT]
+
+# ---- Baseline heuristics thresholds -----------------------------------------
+baselines:
+  hybrid_criticality_quantile: 0.70   # tasks above this h_i quantile get backup
+  critical_path_slack_frac: 0.05      # slack <= frac * makespan => on critical path
+  reliability_high_crit_quantile: 0.70

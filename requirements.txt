@@ -1,0 +1,12 @@
+numpy>=1.24
+pandas>=2.0
+networkx>=3.1
+pyyaml>=6.0
+matplotlib>=3.7
+scipy>=1.10
+tqdm>=4.65
+pytest>=7.4
+# Deep learning stack (GCN). Install torch matching your CUDA/CPU first,
+# then torch-geometric. See README for platform-specific install notes.
+torch>=2.1
+torch-geometric>=2.4
