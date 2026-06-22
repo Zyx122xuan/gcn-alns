@@ -18,8 +18,11 @@ CLI::
 from __future__ import annotations
 
 import argparse
+import copy
 import math
+import os
 import pickle
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -140,20 +143,68 @@ def split_instances(iids: list[str], cfg: Config) -> dict[str, list[str]]:
     }
 
 
-def build_dataset(instances_dir: str | Path, cfg: Config,
-                  alns_iter: int | None = None) -> dict:
-    instances_dir = Path(instances_dir)
-    paths = sorted(instances_dir.glob("*.json"))
+def _collect_paths(instances_dir) -> list[Path]:
+    """Return sorted instance JSON paths from one dir or a list of dirs."""
+    if isinstance(instances_dir, (str, Path)):
+        dirs = [instances_dir]
+    else:
+        dirs = list(instances_dir)
+    paths: list[Path] = []
+    for d in dirs:
+        paths.extend(sorted(Path(d).glob("*.json")))
+    return paths
+
+
+def _worker_init() -> None:
+    """Limit per-worker BLAS / torch threads to avoid oversubscription."""
+    for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                "NUMEXPR_NUM_THREADS"):
+        os.environ[var] = "1"
+    try:
+        import torch
+        torch.set_num_threads(1)
+    except Exception:
+        pass
+
+
+def _build_sample_worker(task: tuple):
+    """Top-level worker (spawn-safe): build one instance sample."""
+    path_str, cfg_data, alns_iter = task
+    cfg = Config(cfg_data)
+    sample = build_instance_sample(Path(path_str), cfg, alns_iter)
+    return Path(path_str).stem, sample
+
+
+def build_dataset(instances_dir, cfg: Config,
+                  alns_iter: int | None = None,
+                  workers: int | None = None) -> dict:
+    paths = _collect_paths(instances_dir)
+    workers = workers if workers is not None else min(30, os.cpu_count() or 1)
+    cfg_data = copy.deepcopy(cfg.data)
     samples: dict[str, InstanceSample] = {}
-    for p in paths:
-        s = build_instance_sample(p, cfg, alns_iter)
-        iid = p.stem
+
+    def _record(iid: str, s) -> None:
         if s is None:
             print(f"  [skip] {iid}: no feasible solution")
-            continue
+            return
         samples[iid] = s
         print(f"  [ok]   {iid}: {len(s.pos)} positives, "
               f"{s.n_feasible_solutions} feasible solutions")
+
+    if workers <= 1:
+        _worker_init()
+        for p in paths:
+            _record(p.stem, build_instance_sample(p, cfg, alns_iter))
+    else:
+        tasks = [(str(p), cfg_data, alns_iter) for p in paths]
+        with ProcessPoolExecutor(max_workers=workers,
+                                 initializer=_worker_init) as ex:
+            futures = [ex.submit(_build_sample_worker, t) for t in tasks]
+            for fut in as_completed(futures):
+                iid, s = fut.result()
+                _record(iid, s)
+
+    samples = {k: samples[k] for k in sorted(samples)}  # stable ordering
     split = split_instances(list(samples.keys()), cfg)
     return {"samples": samples, "split": split,
             "num_domains": _num_domains(cfg)}
@@ -166,16 +217,17 @@ def _num_domains(cfg: Config) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Build GCN training dataset")
-    ap.add_argument("--instances", default="data/instances")
+    ap.add_argument("--instances", nargs="+", default=["data/instances"])
     ap.add_argument("--out", default="data/gcn")
     ap.add_argument("--config", default=None)
     ap.add_argument("--alns-iter", type=int, default=None,
                     help="cap ALNS iterations during demonstration generation")
+    ap.add_argument("--workers", type=int, default=None)
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     print(f"Building GCN dataset from {args.instances} ...")
-    data = build_dataset(args.instances, cfg, args.alns_iter)
+    data = build_dataset(args.instances, cfg, args.alns_iter, workers=args.workers)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     with open(out / "dataset.pkl", "wb") as fh:

@@ -4,18 +4,18 @@
 > 计划文件位于 `~/.cursor/plans/gcn-alns-experiment-plan_6de824b3.plan.md`（**不要编辑**）。
 
 ## 一句话状态
-论文 RLC-HFTSP / GCN-ALNS 实验平台：**阶段 0–9 全部完成并端到端验证**。
-阶段 6（GCN 训练）、7（GCN-ALNS）、8（实验编排+指标 CSV）、9（绘图）已实现并跑通：
-数据集构建→训练→GCN-ALNS 求解→主实验 CSV→18 张图全链路验证通过。
-主实验结果（小数据集、降迭代验证版）：**仅 ALNS / GCN-ALNS 达成 SLA 可行**（GCN-ALNS 可行率与成本均略优于 ALNS），所有启发式 baseline 可行率为 0，符合论文预期。
+论文 RLC-HFTSP / GCN-ALNS 实验平台：**阶段 0–9 全部完成；已并行化改造并在新机（32 核 / 4×A40 / 128GB）上跑大规模实验**。
+**主实验（90 实例三规模、全量迭代）已完成出图**；消融 / 敏感性 / 可扩展性正在后台运行（结束后自动重聚合+重绘）。
+大规模主实验结论（见 `results/csv/summary_by_algorithm.csv`）：**仅 ALNS / GCN-ALNS 达成显著 SLA 可行率**
+（GCN-ALNS 可行率 0.464、成本 541.8 ≤ ALNS 0.469 / 543.9；启发式 baseline 可行率 ≤0.18，Full-Proactive 0 且成本最高 2313），符合论文预期。
 
 ## 技术栈与环境
-- Python **3.8**（用户机为 miniconda，`D:\miniconda3`，cp38），运行需 `PYTHONPATH=src`。
-- 已安装：numpy, pandas, pyyaml, networkx, matplotlib, scipy, tqdm, pytest。
-- **已安装 torch 2.4.1+cpu + sympy/filelock/mpmath**（Adam 优化器依赖 sympy）。`torch-geometric 2.6.1` 也已装，但**模型不使用它**（见下）。
+- **当前实验机**：工作区 `e:\user\zhangyuxuan\gcn-alns\gcn-alns`，CPU **32 核**、**4×A40**(46/49GB)、128GB RAM。运行需 `$env:PYTHONPATH="src"`。
+- **torch `2.5.1+cu121`，CUDA 可用（4 卡）**——旧机的 "torch 2.4.1+cpu / CPU-only" 描述已过时；GCN 训练用 `--device cuda:0`。
+- 已安装：numpy, pandas, pyyaml, networkx, matplotlib, scipy, tqdm, pytest。`torch-geometric` 仍**不被模型使用**（自包含稠密 GCN，见阶段6）。
 - Windows PowerShell，shell 命令用 `$env:PYTHONPATH="src"; python ...`。
-- 注意：本机网络到 pythonhosted 不稳定，pip 常超时；torch 主 wheel 已缓存，必要时用 `--no-deps` + 单独装依赖、`--timeout 300 --retries 20`。
-- 注意：matplotlib **首次** import 会构建字体缓存，可能很慢（数十分钟），之后正常。
+- 注意：matplotlib 首次 import 会构建字体缓存（之后正常；本机已建好，约数秒）。
+- **真正瓶颈是纯 Python 的 ALNS+verify（CPU 密集）**；GPU 仅对 GCN 训练有意义。已对实验编排做多进程并行（见下）。
 
 ## 已完成（阶段 0–5）
 - **阶段0 脚手架**：`requirements.txt`、`pyproject.toml`、`README.md`、`.gitignore`、`config/default.yaml`（所有默认参数与种子的唯一来源）、`src/gcnalns/config.py`、`utils/seeding.py`、`utils/io.py`。
@@ -59,9 +59,27 @@
 ### 阶段9 绘图（`src/gcnalns/viz/plots.py`）—— 已完成
 - 只读 CSV，产出 18 张 PNG(成本/可行率/违约/恢复/安全余量/备份比例/makespan/运行时/verify/GCN推理/收敛/剪枝/|Ω| + 成本堆叠分解 + 按场景违约 + 规模-运行时散点)。缺列/缺文件自动跳过。
 
+## 大规模实验（本轮，新机）
+### 并行化 + 鲁棒性改造（已实现并对拍验证）
+- `experiments/runner.py`：把 `(算法,实例,rep)` 展平为任务列表，用 `ProcessPoolExecutor` 多进程并行；新增顶层 worker `_run_one`（spawn 安全）+ `_worker_init`（限 `OMP/MKL/OPENBLAS/NUMEXPR=1` 且 `torch.set_num_threads(1)`，避免过订阅）。新增参数/CLI：`--workers`（默认 `min(30,cpu)`）、`--max-iter`（覆盖 `alns.max_iter`）、`--tag`，`--instances` 支持**多目录**(`nargs="+"`)。
+- **增量落盘 + 断点续跑**：每完成一条结果立即 append 到 `results/raw_json/<tag>.jsonl`；启动时按 `(tag,algorithm,iid,rep)` 跳过已完成项；结束再写 `<tag>.json` 并 `aggregate`。长任务中途崩溃可无损续跑。
+- `gcn/dataset.py`：`build_dataset` 多进程并行 `build_instance_sample`，新增 `--workers` 与多目录 `--instances`。
+- 各入口脚本（run_main/run_ablation/run_sensitivity/run_scalability）均透传 `--workers/--max-iter` 与多目录 `--instances`。
+- 校验：GCN 推理走 CPU（`infer.py` `map_location="cpu"`），30 worker 不抢 GPU；`--workers 1` vs `--workers 6` 对拍 17 个确定性指标 **0 mismatch**；resume 复跑确认"nothing to do"。
+
+### 数据 / 模型（已产出）
+- 实例：`data/instances/{small,medium,large}` = **45 / 30 / 15 = 90 个**（5 工作流 × 3 SLA × N）。
+- GCN 数据集：`data/gcn/dataset.pkl`，**38 个可行实例**（train27/val6/test5）；tight 场景多数不可行（论文预期）。建集日志 `data/gcn_build.log`。
+- GCN 模型：`results/gcn_model.pt`（A40，early stop@55，best val=0.5749，~39s）。训练日志 `results/gcn_train.log`。
+
+### 实验运行状态
+- **主实验（已完成）**：`run_main` 三规模分 tag —— `main_small`(repeats10,iter1000,1260 runs)、`main_medium`(repeats10,iter1000,840 runs)、`main_large`(repeats5,iter800,270 runs)。结果见 `results/raw_json/main_*.json` 与 `results/csv/*.csv`，18 张图见 `results/figures/`。
+  - 关键：`main_large` 单作业耗时 ~31h（500 任务 ALNS+verify 极重，个别 large 解单次达小时级）。
+- **后台运行中**：`run_ablation`(small+medium, repeats8, 7 变体)、`run_sensitivity`(small, repeats5, 扫 `recovery_penalty_weight`/`insert_cost.w6`)、`run_scalability`(三规模, repeats3, **--max-iter 800** 控时)；链尾自动 `aggregate` + `viz.plots` 重出全量 CSV/图。
+
 ## 已知问题 / 待办决策
-1. **数据规模偏小**：现有 `data/instances/` 仅 15 个 small/medium 实例，且 medium/tight 对所有方法都 infeasible（连 ALNS 也找不到可行解，可能 SLA 偏紧），dataset 只剩 **4 个 loose 实例**(train3/val1/test0)。模型与主实验结果仅用于**验证全链路**，非最终报告级。**下一步**应批量生成更大、更可行的训练/测试集（`instance_builder --scale/--load`，或放宽 loose 占比），再重训重跑。
-2. **主实验是降配验证版**：上面 CSV/图是 `max_iter=50, repeats=2` 跑的（机器算力有限，全 1000 迭代×10 重复会很慢）。最终报告用 `python -m gcnalns.experiments.run_main`（默认 config 全量），建议放后台跑。
+1. **数据规模**（已扩大）：现为 90 实例（small/medium/large 三规模），GCN 数据集 38 可行实例。tight（及多数 medium）场景对所有方法 infeasible —— 这是论文"baseline 失败"的预期；GCN 主要在 loose/medium 可行实例上学习。若需更多可行样本，可加大 `--n` 或放宽 loose 占比。
+2. **主实验已全量**（已完成）：`main_small/medium` 用 `max_iter=1000, repeats=10`，`main_large` 用 `max_iter=800, repeats=5`（large 极慢，降配控时）。结果为报告级，已聚合出图。后台的 ablation/sensitivity/scalability 完成后会再整体重聚合。
 3. **PEFT bug 已修**：`heft._greedy_eft_place` 原按优先级全局排序可能违反拓扑序导致 `KeyError`；已加 `_topo_priority_order`(Kahn + 按优先级选 ready)修复，对 HEFT/baseline 行为无影响。
 4. **verify 性能**：纯 Python，50 任务约 0.2–0.4s/次、|Ω|≈130–210；ALNS 单次(50 迭代)约 5–7s，1000 迭代×10 重复×多实例会很慢。可选优化：向量化/增量重算、大规模对 Ω 采样（最终报告解仍需完整 verify）。
 5. **消融开关接线**：`gcn`、`recovery_penalty` 已在 ALNS 核心生效；`fault_domain`/`deployment_risk`/`dynamic_resched`/`hybrid` 仍只透传未在 `insertion.py`/`operators.py`/`recovery.py` 内接线（`run_ablation` 会跑这些变体但结果≈Full）。需要严格消融时补接线。
@@ -75,28 +93,34 @@
 - 节点执行顺序 O = 各节点上任务的拓扑序（`base.topo_node_order`）。
 
 ## 如何在新 session 继续（给用户的提示词）
-全链路阶段 0–9 已完成。后续主要是**扩大数据规模并跑全量实验**。新会话可发：
+全链路阶段 0–9 已完成；主实验已出报告级结果，消融/敏感性/可扩展性在后台。新会话可发：
 
-> 继续 gcn-alns 项目（D:\ProgramData\graduate\gcn-alns）。先读 `PROGRESS.md`。
-> 批量生成更大可行的训练/测试实例，重建 GCN 数据集→重训→跑全量 run_main/ablation/
-> sensitivity/scalability→出图。运行用 `$env:PYTHONPATH="src"`，长任务放后台。
+> 继续 gcn-alns 项目（e:\user\zhangyuxuan\gcn-alns\gcn-alns）。先读 `PROGRESS.md`。
+> 检查后台实验（ablation/sensitivity/scalability）是否跑完，必要时用同 --tag 续跑，
+> 然后重跑 `eval.aggregate` + `viz.plots` 出全量 CSV/图。运行用 `$env:PYTHONPATH="src"`，长任务放后台。
 
 （新 session 会重新读取本文件恢复上下文。）
 
-## 常用命令
+## 常用命令（本轮大规模，新机）
 ```powershell
 $env:PYTHONPATH="src"
-# 数据 / 验证器
-python -m gcnalns.data.instance_builder --out data/instances --n 20 --scale small --load medium
-python -m pytest tests/test_recovery_verifier.py -p no:cacheprovider -q
-# 阶段6: 建数据集 + 训练（--alns-iter 限迭代加速建集）
-python -m gcnalns.gcn.dataset --instances data/instances --out data/gcn --alns-iter 150
-python -m gcnalns.gcn.train --data data/gcn --out results/gcn_model.pt
-# 阶段7/8: 主实验（默认全量；验证可降 max_iter/repeats，放后台）
-python -m gcnalns.experiments.run_main --instances data/instances --out results
-python -m gcnalns.experiments.run_ablation --instances data/instances --out results
-python -m gcnalns.experiments.run_sensitivity --instances data/instances --out results
-python -m gcnalns.experiments.run_scalability --generate --out results
-# 阶段9: 绘图（首次 matplotlib 建字体缓存会慢）
+# 阶段1: 三规模数据（每个 scale 单独一次；--instances 后续支持多目录）
+python -m gcnalns.data.instance_builder --out data/instances/small  --scale small  --n 45
+python -m gcnalns.data.instance_builder --out data/instances/medium --scale medium --n 30
+python -m gcnalns.data.instance_builder --out data/instances/large  --scale large  --n 15
+# 阶段2: 建数据集(并行,多目录) + 训练(GPU)
+python -m gcnalns.gcn.dataset --instances data/instances/small data/instances/medium data/instances/large --out data/gcn --alns-iter 200 --workers 30
+python -m gcnalns.gcn.train --data data/gcn --out results/gcn_model.pt --device cuda:0
+# 阶段3: 主实验(并行+续跑; 按规模分 tag, large 降配)
+python -m gcnalns.experiments.run_main --instances data/instances/small  --out results --workers 30 --repeats 10 --max-iter 1000 --tag main_small
+python -m gcnalns.experiments.run_main --instances data/instances/medium --out results --workers 30 --repeats 10 --max-iter 1000 --tag main_medium
+python -m gcnalns.experiments.run_main --instances data/instances/large  --out results --workers 30 --repeats 5  --max-iter 800  --tag main_large
+# 阶段3: 消融 / 敏感性 / 可扩展性
+python -m gcnalns.experiments.run_ablation     --instances data/instances/small data/instances/medium --out results --workers 30 --repeats 8
+python -m gcnalns.experiments.run_sensitivity  --instances data/instances/small --out results --workers 30 --repeats 5
+python -m gcnalns.experiments.run_scalability  --instances data/instances/small data/instances/medium data/instances/large --out results --workers 30 --repeats 3 --max-iter 800
+# 阶段4: 聚合 + 绘图
+python -m gcnalns.eval.aggregate --raw results/raw_json --out results/csv
 python -m gcnalns.viz.plots --csv results/csv --out results/figures
+# 续跑：同 --tag 重跑会自动跳过已完成项 (results/raw_json/<tag>.jsonl)
 ```

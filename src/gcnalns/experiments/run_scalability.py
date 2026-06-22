@@ -58,22 +58,26 @@ def generate_scalability_instances(out_dir: str | Path, cfg, scales: list[str],
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Scalability study")
-    ap.add_argument("--instances", default="data/instances_scal")
+    ap.add_argument("--instances", nargs="+", default=["data/instances_scal"])
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--generate", action="store_true")
     ap.add_argument("--scales", nargs="*", default=["small", "medium", "large"])
     ap.add_argument("--repeats", type=int, default=None)
+    ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--max-iter", dest="max_iter", type=int, default=None)
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     instances = args.instances
     if args.generate:
-        instances = generate_scalability_instances(args.instances, cfg, args.scales)
+        # --generate writes to the first --instances path (single dir).
+        gen_dir = args.instances[0] if isinstance(args.instances, list) else args.instances
+        instances = generate_scalability_instances(gen_dir, cfg, args.scales)
 
     run_experiment(instances, args.out, cfg,
                    algorithms=SCALABILITY_ALGORITHMS, repeats=args.repeats,
-                   tag="scalability")
+                   tag="scalability", workers=args.workers, max_iter=args.max_iter)
 
 
 if __name__ == "__main__":
