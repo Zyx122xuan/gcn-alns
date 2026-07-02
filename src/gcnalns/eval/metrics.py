@@ -51,8 +51,11 @@ def evaluate(instance: Instance, solution: Solution, cfg: Config,
     factory = factory or get_factory(instance, cfg)
     sched = compute_schedule(instance, solution, factory, cfg)
 
+    # Use the scheduler's ablation (if any) so the final verification matches
+    # the dynamic-reschedule policy the search assumed.
+    ablation = getattr(scheduler, "ablation", None) if scheduler else None
     t0 = time.perf_counter()
-    res = verify(instance, solution, factory, cfg, sched)
+    res = verify(instance, solution, factory, cfg, sched, ablation=ablation)
     verify_time = time.perf_counter() - t0
 
     bd = compute_cost(instance, solution, sched, factory, cfg,

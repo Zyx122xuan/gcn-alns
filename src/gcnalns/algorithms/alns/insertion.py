@@ -26,13 +26,16 @@ GCNScoreFn = Callable[[int, int], float]
 
 class Repairer:
     def __init__(self, instance: Instance, factory: LinkFactory, cfg: Config,
-                 budget: float, gcn_score: GCNScoreFn | None = None):
+                 budget: float, gcn_score: GCNScoreFn | None = None,
+                 ablation: dict | None = None):
         self.inst = instance
         self.factory = factory
         self.cfg = cfg
         self.budget = budget
         self.gcn_score = gcn_score
+        self.ablation = ablation or {}
         self.w = cfg["insert_cost"]
+        self.normalize = bool(self.w.get("normalize", True))
         self.rcv = cfg["recovery"]
         self.order = topological_order(instance.workflow)
         self.pred = {t: instance.workflow.predecessors(t) for t in instance.workflow.tasks}
@@ -68,7 +71,12 @@ class Repairer:
         slack = self.inst.workflow.tasks[i].slack
         return max(0.0, self.rcv["delta_detect"] + node.queue_wait + comm_in + p_ik - slack)
 
-    def insert_cost(self, i: int, k: int, where, finish, node_free, used_cpu) -> float:
+    # -- InsertCost components (Spec sec.13, sec.15) ------------------------
+    _COMPONENTS = ("ect", "cost", "risk", "recrisk", "load")
+
+    def insert_cost_components(self, i: int, k: int, where, finish, node_free,
+                               used_cpu) -> dict[str, float]:
+        """Return the raw InsertCost component values for candidate (i, k)."""
         node = self.inst.continuum.nodes[k]
         ready, comm_in = self._comm_in(i, k, where, finish)
         start = max(node_free.get(k, 0.0), ready)
@@ -79,9 +87,50 @@ class Repairer:
         recrisk = self.rec_risk(i, k, comm_in)
         load = used_cpu.get(k, 0.0) / max(node.cpu_cap, 1e-9)
         gcn = self.gcn_score(i, k) if self.gcn_score else 0.0
+        return {"ect": ect, "cost": cost, "risk": risk,
+                "recrisk": recrisk, "load": load, "gcn": gcn}
+
+    def insert_scores(self, i: int, cands: list[int], where, finish, node_free,
+                      used_cpu) -> dict[int, float]:
+        """Score every candidate node for task ``i`` with InsertCost.
+
+        Components are min-max normalised *within the candidate set* so the
+        otherwise large ECT/Cost magnitudes do not drown the [0,1] GCN reward.
+        The GCN term is weighted by the task's structural criticality h_i
+        (Modeling doc sec.14): ``- w6 * h_i * gcn``. Lower score = preferred.
+        """
+        comps = {k: self.insert_cost_components(i, k, where, finish, node_free,
+                                                used_cpu) for k in cands}
         w = self.w
-        return (w["w1"] * ect + w["w2"] * cost + w["w3"] * risk
-                + w["w4"] * recrisk + w["w5"] * load - w["w6"] * gcn)
+        h_i = self.inst.workflow.tasks[i].criticality
+        use_risk = self.ablation.get("deployment_risk", True)
+        keys = (*self._COMPONENTS, "gcn")
+        if self.normalize:
+            lo = {key: min(comps[k][key] for k in cands) for key in keys}
+            hi = {key: max(comps[k][key] for k in cands) for key in keys}
+
+            def nz(key: str, val: float) -> float:
+                span = hi[key] - lo[key]
+                return (val - lo[key]) / span if span > 1e-12 else 0.0
+        else:
+            def nz(key: str, val: float) -> float:
+                return val
+
+        scores: dict[int, float] = {}
+        for k in cands:
+            c = comps[k]
+            risk_term = w["w3"] * nz("risk", c["risk"]) if use_risk else 0.0
+            scores[k] = (w["w1"] * nz("ect", c["ect"])
+                         + w["w2"] * nz("cost", c["cost"])
+                         + risk_term
+                         + w["w4"] * nz("recrisk", c["recrisk"])
+                         + w["w5"] * nz("load", c["load"])
+                         - w["w6"] * h_i * nz("gcn", c["gcn"]))
+        return scores
+
+    def insert_cost(self, i: int, k: int, where, finish, node_free, used_cpu) -> float:
+        """Single-candidate InsertCost (no candidate-set normalisation)."""
+        return self.insert_scores(i, [k], where, finish, node_free, used_cpu)[k]
 
     # -- screening ----------------------------------------------------------
     def feasible_node(self, i: int, k: int, used_cpu, used_mem,

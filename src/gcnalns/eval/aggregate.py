@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from ..utils.io import load_json
@@ -26,6 +27,11 @@ _NUMERIC = [
     "cost_recovery", "runtime", "verify_time", "gcn_infer_time",
     "convergence_iter", "prune_ratio",
 ]
+
+# Recovery metrics only meaningful on SLA-feasible solutions: infeasible runs
+# carry huge / INF R_max that drag the plain mean negative (issue #4). These get
+# an extra ``*_feas_*`` aggregation restricted to feasible, finite-valued runs.
+_FEASIBLE_ONLY = ["safety_margin", "r_max", "avg_recovery", "c_worst", "cost_total"]
 
 
 def load_runs(raw_dir: str | Path) -> pd.DataFrame:
@@ -48,7 +54,20 @@ def summarize(df: pd.DataFrame, group_keys: list[str]) -> pd.DataFrame:
     grouped = df.groupby(group_keys, dropna=False)[cols]
     summary = grouped.agg(["mean", "std", "count"])
     summary.columns = [f"{m}_{stat}" for m, stat in summary.columns]
-    return summary.reset_index()
+    summary = summary.reset_index()
+
+    # feasible-only aggregation for recovery / cost metrics (issue #4)
+    if "feasible" in df.columns:
+        feas = df[df["feasible"].astype(bool)].copy()
+        fcols = [c for c in _FEASIBLE_ONLY if c in feas.columns]
+        if fcols and not feas.empty:
+            finite = np.isfinite(feas[fcols].apply(pd.to_numeric, errors="coerce")).all(axis=1)
+            feas = feas[finite]
+        if fcols and not feas.empty:
+            fg = feas.groupby(group_keys, dropna=False)[fcols].agg(["mean", "std", "count"])
+            fg.columns = [f"{m}_feas_{stat}" for m, stat in fg.columns]
+            summary = summary.merge(fg.reset_index(), on=group_keys, how="left")
+    return summary
 
 
 def aggregate(raw_dir: str | Path, out_dir: str | Path) -> dict[str, Path]:
@@ -66,6 +85,7 @@ def aggregate(raw_dir: str | Path, out_dir: str | Path) -> dict[str, Path]:
         "summary_by_algo_scenario": ["algorithm", "sla_scenario"],
         "summary_by_algo_scale": ["algorithm", "scale"],
         "summary_by_algo_workflow": ["algorithm", "workflow_type"],
+        "summary_by_algo_scale_scenario": ["algorithm", "scale", "sla_scenario"],
     }
     for name, keys in specs.items():
         if all(k in df.columns for k in keys) and not df.empty:

@@ -92,13 +92,18 @@ def _choose_recovery_node(instance: Instance, solution: Solution, i: int,
                           forbidden_nodes: set[int], forbidden_domains: set[str],
                           used_cpu: dict[int, float], used_mem: dict[int, float],
                           f_omega: dict[int, float], node_omega: dict[int, int],
-                          factory: LinkFactory, cfg: Config) -> int | None:
+                          factory: LinkFactory, cfg: Config,
+                          allowed_domains: set[str] | None = None) -> int | None:
     task = instance.workflow.tasks[i]
     best, best_cost = None, INF
     for k, node in instance.continuum.nodes.items():
         if k in forbidden_nodes:
             continue
         if node.fault_domain in forbidden_domains:
+            continue
+        # w/o Dynamic Resched: restrict recompute to the task's original
+        # fault domains (local recovery only, no global re-optimisation).
+        if allowed_domains is not None and node.fault_domain not in allowed_domains:
             continue
         if used_cpu.get(k, 0.0) + task.resource > node.res_cpu + 1e-9:
             continue
@@ -114,8 +119,11 @@ def _choose_recovery_node(instance: Instance, solution: Solution, i: int,
 # Single-fault simulation
 # ---------------------------------------------------------------------------
 def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
-                   fault: Fault, factory: LinkFactory, cfg: Config) -> float:
+                   fault: Fault, factory: LinkFactory, cfg: Config,
+                   ablation: dict | None = None) -> float:
     """Return post-fault makespan C_max^omega (or +inf if unrecoverable)."""
+    ablation = ablation or {}
+    dynamic_resched = ablation.get("dynamic_resched", True)
     wf = instance.workflow
     rcv = cfg["recovery"]
     det, replan = rcv["delta_detect"], rcv["delta_replan"]
@@ -194,9 +202,14 @@ def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
             if active:
                 for k in replicas:
                     forbidden_domains.add(instance.continuum.nodes[k].fault_domain)
+            allowed_domains = None
+            if not dynamic_resched:
+                allowed_domains = {instance.continuum.nodes[k].fault_domain
+                                   for k in replicas}
             kp = _choose_recovery_node(instance, solution, i, forbidden_nodes,
                                        forbidden_domains, used_cpu, used_mem,
-                                       f_omega, node_omega, factory, cfg)
+                                       f_omega, node_omega, factory, cfg,
+                                       allowed_domains=allowed_domains)
             if kp is None:
                 return INF
             node = instance.continuum.nodes[kp]
@@ -259,8 +272,14 @@ def estimate_rmax(instance: Instance, solution: Solution, sched: ScheduleResult,
 
 
 def verify(instance: Instance, solution: Solution, factory: LinkFactory,
-           cfg: Config, base: ScheduleResult | None = None) -> RecoveryResult:
-    """Run full recovery verification over the controllable fault set."""
+           cfg: Config, base: ScheduleResult | None = None,
+           ablation: dict | None = None) -> RecoveryResult:
+    """Run full recovery verification over the controllable fault set.
+
+    ``ablation`` is consulted only for the *Dynamic Resched* switch so the
+    quick search evaluation and the final verification agree; all other
+    feasibility logic is identical for every method.
+    """
     if base is None:
         base = compute_schedule(instance, solution, factory, cfg)
 
@@ -276,7 +295,8 @@ def verify(instance: Instance, solution: Solution, factory: LinkFactory,
     r_max = 0.0
     sum_r = 0.0
     for fault in faults:
-        c_omega = simulate_fault(instance, solution, base, fault, factory, cfg)
+        c_omega = simulate_fault(instance, solution, base, fault, factory, cfg,
+                                 ablation=ablation)
         r_omega = INF if c_omega == INF else max(0.0, c_omega - base.cmax)
         res.per_fault[fault.label()] = r_omega
         res.per_fault_cmax[fault.label()] = c_omega

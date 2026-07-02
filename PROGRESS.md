@@ -77,12 +77,30 @@
   - 关键：`main_large` 单作业耗时 ~31h（500 任务 ALNS+verify 极重，个别 large 解单次达小时级）。
 - **后台运行中**：`run_ablation`(small+medium, repeats8, 7 变体)、`run_sensitivity`(small, repeats5, 扫 `recovery_penalty_weight`/`insert_cost.w6`)、`run_scalability`(三规模, repeats3, **--max-iter 800** 控时)；链尾自动 `aggregate` + `viz.plots` 重出全量 CSV/图。
 
+## 本轮修复（plan: gcn-alns-experiment-fixes，代码已完成并验证）
+四个实验问题的根因修复均已落地、跑通并小规模对拍验证（待三规模全量重跑出报告级结果）：
+1. **GCN 增益看不出来 → 已修**：`insertion.py` 把 InsertCost 拆成分量并在「候选集内」min-max 归一化（`insert_scores`），GCN 项改为 `− w6·h_i·gcn`（`h_i=criticality`）。`config` 增 `insert_cost.normalize:true`，`w6` 上调到 3.0。新增 `run_budget.py`（迭代预算 50/100/200/500/1000 扫描）凸显 GCN 在小预算下更快达可行/更省。
+   - 验证：60 迭代下 GCN-ALNS 已可行(cost 265)，plain ALNS 不可行(cost 291)；budget 图 GCN-ALNS 可行率显著高于 ALNS。
+2. **GCN 接近随机 → 已重训**：`dataset.py` 按建模 sec.13 加权标签 `(1+h_i)(1−Rmax/Δ̄)` 重建数据集（`pos_w`），`train.py` 用加权 BCE+BPR，训练后报告测试集排序指标。**重训结果 test pairwise AUC=0.904 / val 0.899**（旧 best val≈0.575 近随机）。数据集现 33 可行实例(train23/val5/test5)。
+3. **4 个消融开关未生效 → 已接线**：`deployment_risk`(insert_scores 关掉 w3·Risk)、`fault_domain`(`_choose_active_replicas` 不再排除同域)、`hybrid`(`_repair_core` 强制全主动/全被动，`hybrid_mode`)、`dynamic_resched`(`recovery.simulate_fault` 限制为本域局部恢复，并经 `metrics.evaluate`→`verify` 透传保证搜索/验证一致)。`run_ablation` Hybrid 拆成 all-passive/all-active 两变体。
+   - 验证：各 `w/o *` 数值与 `[Full]` 明显不同（可行率 Full 0.67 vs w/o GCN 0.5 vs w/o RecPenalty/DynResched 0.0 …）。
+4. **量纲图跨规模污染 + safety_margin 为负 → 已修**：`aggregate.py` 增「仅可行解」聚合 `*_feas_mean/std/count`（剔除 INF/不可行 r_max）并新增 `summary_by_algo_scale_scenario.csv`。`plots.py` 重写：量纲指标按 scale 分组图、无量纲指标单图、新增「按任务数归一化成本」图、安全余量改用 `safety_margin_feas_mean`（图注「仅可行解」）、主对比图仅核心算法（排除 `[...]`）、消融/敏感性/预算各按 tag 出图。
+   - `pytest tests/test_recovery_verifier.py` 仍 **4 passed**（dynamic_resched 默认开，行为不变）。
+
+> **重跑进度（新代码，归档旧结果于 `results/archive_oldcode_*`）**：
+> - ✅ `main_small`(45 实例,repeats10,iter1000,1260 runs)、`main_medium`(30,repeats10,iter1000,840 runs) 已完成。
+> - ✅ `budget_{50,100,200,500,1000}`(small,repeats8,各720 runs) 已完成 → `fig_budget_convergence`：小预算下 GCN-ALNS 可行率更高、iter1000 成本更低(208.3<210.7)。
+> - ✅ 消融 6/8 变体(small+medium,repeats5,iter1000) 已完成：Full / w/o GCN / w/o Recovery Penalty / w/o Fault-Domain / w/o Deployment Risk / w/o Dynamic Resched。
+> - ⏳ **未完成**：消融剩 2 变体 `w/o Hybrid (all-passive)` 与 `(all-active)`（用户在 ~31h 后手动终止，正运行到此）；**large 规模(main+ablation) 尚未跑**（重计算，需确认降配/时机）。
+> - 续跑方式：`run_ablation --instances data/instances/small data/instances/medium --repeats 5 --max-iter 1000`（同 tag 自动跳过已完成 6 变体，仅补跑 2 个 Hybrid），随后 `eval.aggregate` + `viz.plots`。
+> - 注意本机长期被另一项目(DAGFleet)的 GPU/CPU 作业占用，重跑用 `--workers 8` 共存。
+
 ## 已知问题 / 待办决策
 1. **数据规模**（已扩大）：现为 90 实例（small/medium/large 三规模），GCN 数据集 38 可行实例。tight（及多数 medium）场景对所有方法 infeasible —— 这是论文"baseline 失败"的预期；GCN 主要在 loose/medium 可行实例上学习。若需更多可行样本，可加大 `--n` 或放宽 loose 占比。
 2. **主实验已全量**（已完成）：`main_small/medium` 用 `max_iter=1000, repeats=10`，`main_large` 用 `max_iter=800, repeats=5`（large 极慢，降配控时）。结果为报告级，已聚合出图。后台的 ablation/sensitivity/scalability 完成后会再整体重聚合。
 3. **PEFT bug 已修**：`heft._greedy_eft_place` 原按优先级全局排序可能违反拓扑序导致 `KeyError`；已加 `_topo_priority_order`(Kahn + 按优先级选 ready)修复，对 HEFT/baseline 行为无影响。
 4. **verify 性能**：纯 Python，50 任务约 0.2–0.4s/次、|Ω|≈130–210；ALNS 单次(50 迭代)约 5–7s，1000 迭代×10 重复×多实例会很慢。可选优化：向量化/增量重算、大规模对 Ω 采样（最终报告解仍需完整 verify）。
-5. **消融开关接线**：`gcn`、`recovery_penalty` 已在 ALNS 核心生效；`fault_domain`/`deployment_risk`/`dynamic_resched`/`hybrid` 仍只透传未在 `insertion.py`/`operators.py`/`recovery.py` 内接线（`run_ablation` 会跑这些变体但结果≈Full）。需要严格消融时补接线。
+5. **消融开关接线**：~~仍只透传~~ **已全部接线**（见上「本轮修复」#3）；`run_ablation` 各变体结果与 Full 不同。
 6. **torch-geometric 不被模型使用**：已安装但模型用自包含稠密 GCN（见阶段6）。若坚持用 PyG，需把 `model.py` 切回 PyG 卷积并**重训**（权重命名不同，旧 ckpt 不兼容）。
 
 ## 关键设计约定（务必沿用）

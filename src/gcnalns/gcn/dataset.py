@@ -53,6 +53,7 @@ class InstanceSample:
     pos: np.ndarray            # [K, 2] (task_pos, node_pos) positive pairs
     feas_mask: np.ndarray      # [T, N] uint8 feasible candidate mask
     n_feasible_solutions: int
+    pos_w: np.ndarray = None   # [K] per-positive importance weight (Spec sec.13)
 
 
 def _feasible_mask(feats: InstanceFeatures) -> np.ndarray:
@@ -65,7 +66,7 @@ def _feasible_mask(feats: InstanceFeatures) -> np.ndarray:
 
 
 def _run_panel(instance, cfg: Config, alns_iter: int | None):
-    """Return list of (cost, solution) for feasible solutions on ``instance``."""
+    """Return list of ``(cost, solution, r_max, r_eff)`` for feasible solutions."""
     factory = get_factory(instance, cfg)
     out = []
     schedulers = [cls(cfg) for cls in _DEMO_BASELINES]
@@ -76,7 +77,7 @@ def _run_panel(instance, cfg: Config, alns_iter: int | None):
         if res.feasible:
             bd = compute_cost(instance, sol, sched, factory, cfg,
                               recovery_cost=res.recovery_cost)
-            out.append((bd.total, sol))
+            out.append((bd.total, sol, res.r_max, res.r_eff))
 
     # ALNS (strongest teacher); optionally cap iterations for speed
     from ..algorithms.alns.solver import ALNS
@@ -89,8 +90,15 @@ def _run_panel(instance, cfg: Config, alns_iter: int | None):
     if res.feasible:
         bd = compute_cost(instance, sol, sched, factory, cfg,
                           recovery_cost=res.recovery_cost)
-        out.append((bd.total, sol))
+        out.append((bd.total, sol, res.r_max, res.r_eff))
     return out, factory
+
+
+def _solution_safety(r_max: float, r_eff: float) -> float:
+    """Recovery safety factor (1 - R_max/Delta_bar), clamped to [0, 1]."""
+    if r_eff <= 1e-9:
+        return 1.0 if r_max <= 1e-9 else 0.0
+    return float(min(1.0, max(0.0, 1.0 - r_max / r_eff)))
 
 
 def build_instance_sample(path: Path, cfg: Config,
@@ -106,25 +114,40 @@ def build_instance_sample(path: Path, cfg: Config,
     n_keep = max(1, int(math.ceil(frac * len(feasible))))
     high_quality = feasible[:n_keep]
 
-    pos: set[tuple[int, int]] = set()
-    for _, sol in high_quality:
+    # Weighted labels (Modeling doc sec.13): a (task -> node) choice from a
+    # high-quality solution is weighted by (1 + h_i) * (1 - R_max/Delta_bar) so
+    # the GCN prioritises critical tasks placed in solutions with large safety
+    # margin. A pair appearing in several solutions keeps its largest weight.
+    tasks = instance.workflow.tasks
+    pos_w: dict[tuple[int, int], float] = {}
+    for _, sol, r_max, r_eff in high_quality:
+        safety = _solution_safety(r_max, r_eff)
         for tid, repl in sol.placement.items():
             tp = feats.task_pos.get(tid)
             if tp is None:
                 continue
+            h_i = tasks[tid].criticality
+            w = (1.0 + h_i) * safety
             for k in repl:
                 kp = feats.node_pos.get(k)
                 if kp is not None:
-                    pos.add((tp, kp))
+                    key = (tp, kp)
+                    pos_w[key] = max(pos_w.get(key, 0.0), w)
 
+    pos = sorted(pos_w.keys())
     feas_mask = _feasible_mask(feats)
     # ensure positives are marked feasible (chosen => feasible)
     for (tp, kp) in pos:
         feas_mask[tp, kp] = 1
 
-    pos_arr = np.array(sorted(pos), dtype=np.int64) if pos else np.zeros((0, 2), np.int64)
+    if pos:
+        pos_arr = np.array(pos, dtype=np.int64)
+        w_arr = np.array([pos_w[p] for p in pos], dtype=np.float32)
+    else:
+        pos_arr = np.zeros((0, 2), np.int64)
+        w_arr = np.zeros((0,), np.float32)
     return InstanceSample(feats=feats, pos=pos_arr, feas_mask=feas_mask,
-                          n_feasible_solutions=len(feasible))
+                          n_feasible_solutions=len(feasible), pos_w=w_arr)
 
 
 def split_instances(iids: list[str], cfg: Config) -> dict[str, list[str]]:

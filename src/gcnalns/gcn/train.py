@@ -27,6 +27,9 @@ from .model import GCNScorer
 
 def _to_tensors(s: InstanceSample, device):
     f = s.feats
+    pos_w = getattr(s, "pos_w", None)
+    if pos_w is None:
+        pos_w = np.ones(len(s.pos), dtype=np.float32)
     return {
         "node_feat": torch.tensor(f.node_feat, dtype=torch.float32, device=device),
         "node_domain": torch.tensor(f.node_domain, dtype=torch.long, device=device),
@@ -34,6 +37,7 @@ def _to_tensors(s: InstanceSample, device):
         "task_feat": torch.tensor(f.task_feat, dtype=torch.float32, device=device),
         "inter": torch.tensor(f.inter, dtype=torch.float32, device=device),
         "pos": s.pos,
+        "pos_w": np.asarray(pos_w, dtype=np.float32),
         "feas_mask": s.feas_mask,
     }
 
@@ -46,14 +50,15 @@ def _positives_by_task(pos: np.ndarray, T: int) -> dict[int, set]:
 
 
 def _sample_pairs(s, neg_per_pos: int, batch_size: int, rng: np.random.Generator):
-    """Return (task_idx, pos_node, neg_node[neg]) numpy arrays for one instance."""
+    """Return (task_idx, pos_node, neg_node[neg], pos_weight) for one instance."""
     pos = s["pos"]
     feas = s["feas_mask"]
+    pos_w = s["pos_w"]
     if len(pos) == 0:
         return None
     by_task = _positives_by_task(pos, feas.shape[0])
-    t_list, p_list, n_list = [], [], []
-    for tp, kp in pos:
+    t_list, p_list, n_list, w_list = [], [], [], []
+    for j, (tp, kp) in enumerate(pos):
         tp, kp = int(tp), int(kp)
         feasible = np.where(feas[tp] > 0)[0]
         pool = np.array([k for k in feasible if k not in by_task[tp]], dtype=np.int64)
@@ -64,18 +69,20 @@ def _sample_pairs(s, neg_per_pos: int, batch_size: int, rng: np.random.Generator
         t_list.append(tp)
         p_list.append(kp)
         n_list.append(negs)
+        w_list.append(float(pos_w[j]) if j < len(pos_w) else 1.0)
     if not t_list:
         return None
     t_arr = np.array(t_list, dtype=np.int64)
     p_arr = np.array(p_list, dtype=np.int64)
     n_arr = np.stack(n_list, axis=0)               # [P, neg]
+    w_arr = np.array(w_list, dtype=np.float32)
     if t_arr.size > batch_size:                    # subsample to batch budget
         sel = rng.choice(t_arr.size, size=batch_size, replace=False)
-        t_arr, p_arr, n_arr = t_arr[sel], p_arr[sel], n_arr[sel]
-    return t_arr, p_arr, n_arr
+        t_arr, p_arr, n_arr, w_arr = t_arr[sel], p_arr[sel], n_arr[sel], w_arr[sel]
+    return t_arr, p_arr, n_arr, w_arr
 
 
-def _instance_loss(model, tens, t_arr, p_arr, n_arr, rank_w, device):
+def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, rank_w, device):
     h_node = model.encode_nodes(tens["node_feat"], tens["node_domain"], tens["edge_index"])
     h_task = model.encode_tasks(tens["task_feat"])
     P, neg = n_arr.shape
@@ -83,15 +90,61 @@ def _instance_loss(model, tens, t_arr, p_arr, n_arr, rank_w, device):
     p_t = torch.tensor(p_arr, dtype=torch.long, device=device)
     inter = tens["inter"]
 
+    # normalise importance weights to mean 1 so the loss scale is stable
+    w_t = torch.tensor(w_arr, dtype=torch.float32, device=device)
+    w_t = w_t / (w_t.mean() + 1e-9) if w_t.numel() else w_t
+
     s_pos = model.score_pairs(h_task, h_node, t_t, p_t, inter[t_t, p_t])
     t_rep = t_t.unsqueeze(1).expand(P, neg).reshape(-1)
     n_t = torch.tensor(n_arr.reshape(-1), dtype=torch.long, device=device)
     s_neg = model.score_pairs(h_task, h_node, t_rep, n_t, inter[t_rep, n_t])
 
-    bce = (F.binary_cross_entropy_with_logits(s_pos, torch.ones_like(s_pos))
-           + F.binary_cross_entropy_with_logits(s_neg, torch.zeros_like(s_neg)))
-    rank = -F.logsigmoid(s_pos.unsqueeze(1) - s_neg.view(P, neg)).mean()
-    return bce + rank_w * rank
+    bce_pos = F.binary_cross_entropy_with_logits(
+        s_pos, torch.ones_like(s_pos), weight=w_t)
+    bce_neg = F.binary_cross_entropy_with_logits(s_neg, torch.zeros_like(s_neg))
+    rank = -(w_t * F.logsigmoid(s_pos.unsqueeze(1) - s_neg.view(P, neg)).mean(dim=1)).mean()
+    return bce_pos + bce_neg + rank_w * rank
+
+
+@torch.no_grad()
+def evaluate_ranking(model, tens: dict, iids: list[str]) -> dict[str, float]:
+    """Test-set ranking quality: top-1 hit rate + pairwise AUC over feasible cands."""
+    model.eval()
+    top1_hit, top1_tot = 0, 0
+    auc_corr, auc_tot = 0.0, 0.0
+    for iid in iids:
+        s = tens[iid]
+        pos = s["pos"]
+        feas = s["feas_mask"]
+        if len(pos) == 0:
+            continue
+        h_node = model.encode_nodes(s["node_feat"], s["node_domain"], s["edge_index"])
+        h_task = model.encode_tasks(s["task_feat"])
+        inter = s["inter"]
+        by_task = _positives_by_task(pos, feas.shape[0])
+        for tp, kset in by_task.items():
+            feasible = np.where(feas[tp] > 0)[0]
+            if feasible.size == 0:
+                continue
+            t_idx = torch.full((feasible.size,), tp, dtype=torch.long, device=h_node.device)
+            k_idx = torch.tensor(feasible, dtype=torch.long, device=h_node.device)
+            logits = model.score_pairs(h_task, h_node, t_idx, k_idx, inter[t_idx, k_idx])
+            scores = logits.detach().cpu().numpy()
+            order = feasible[np.argsort(-scores)]
+            top1_tot += 1
+            if int(order[0]) in kset:
+                top1_hit += 1
+            pos_mask = np.array([int(k) in kset for k in feasible])
+            ps, ns = scores[pos_mask], scores[~pos_mask]
+            if ps.size and ns.size:
+                for p in ps:
+                    auc_corr += float(np.sum(p > ns) + 0.5 * np.sum(p == ns))
+                    auc_tot += ns.size
+    return {
+        "top1_hit_rate": top1_hit / max(top1_tot, 1),
+        "pairwise_auc": auc_corr / max(auc_tot, 1.0),
+        "n_tasks_scored": top1_tot,
+    }
 
 
 def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
@@ -121,11 +174,11 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
             pairs = _sample_pairs(tens[iid], neg, bs, rng)
             if pairs is None:
                 continue
-            t_arr, p_arr, n_arr = pairs
+            t_arr, p_arr, n_arr, w_arr = pairs
             if train_mode:
                 opt.zero_grad()
             with torch.set_grad_enabled(train_mode):
-                loss = _instance_loss(model, tens[iid], t_arr, p_arr, n_arr, rank_w, dev)
+                loss = _instance_loss(model, tens[iid], t_arr, p_arr, n_arr, w_arr, rank_w, dev)
                 if train_mode:
                     loss.backward()
                     opt.step()
@@ -156,8 +209,22 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
 
     if best_state is not None:
         model.load_state_dict(best_state)
+
+    # Report test-set ranking quality so we can confirm the model learned a
+    # useful signal (vs. ~random when AUC ~ 0.5 / top-1 ~ chance).
+    rank_metrics = {}
+    for split_name in ("val", "test"):
+        ids = split.get(split_name) or []
+        if ids:
+            rank_metrics[split_name] = evaluate_ranking(model, tens, ids)
+            if verbose:
+                m = rank_metrics[split_name]
+                print(f"  [{split_name}] top1_hit_rate={m['top1_hit_rate']:.3f} "
+                      f"pairwise_auc={m['pairwise_auc']:.3f} "
+                      f"(tasks={m['n_tasks_scored']})")
+
     return model, {"history": history, "best_val": best_val,
-                   "num_domains": num_domains}
+                   "num_domains": num_domains, "ranking": rank_metrics}
 
 
 def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> None:

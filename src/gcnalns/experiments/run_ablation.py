@@ -7,12 +7,12 @@ Variants (toggled via the ALNS ``ablation`` dict):
 * w/o Recovery Penalty  - remove the R_max>budget penalty from the objective
 * w/o Fault-Domain      - disable fault-domain isolation in repair
 * w/o Deployment Risk   - drop the risk term from InsertCost
-* w/o Dynamic Resched   - disable post-fault dynamic rescheduling preference
-* w/o Hybrid            - force a single fault-tolerance mode
+* w/o Dynamic Resched   - disable post-fault global rescheduling (local only)
+* w/o Hybrid (all-passive) - force passive recompute for every task
+* w/o Hybrid (all-active)  - force active backup for every task
 
-Note: ``gcn`` and ``recovery_penalty`` are fully wired in the ALNS core; the
-remaining switches are passed through the ``ablation`` dict and take effect
-where the operators/verifier consult them (see PROGRESS.md known-issues #2).
+All switches are now wired into the ALNS core / operators / verifier
+(insertion.py, operators.py, recovery.py), so every variant differs from Full.
 
 CLI::
 
@@ -32,7 +32,8 @@ VARIANTS = {
     "w/o Fault-Domain": {"fault_domain": False},
     "w/o Deployment Risk": {"deployment_risk": False},
     "w/o Dynamic Resched": {"dynamic_resched": False},
-    "w/o Hybrid": {"hybrid": False},
+    "w/o Hybrid (all-passive)": {"hybrid": False, "hybrid_mode": "all-passive"},
+    "w/o Hybrid (all-active)": {"hybrid": False, "hybrid_mode": "all-active"},
 }
 
 

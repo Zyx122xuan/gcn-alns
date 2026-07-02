@@ -111,14 +111,21 @@ DESTROY_OPS = {
 # ---------------------------------------------------------------------------
 def _choose_active_replicas(repairer: Repairer, sol, i, primary_k, where, finish,
                             node_free, used_cpu, used_mem, m_max) -> list[int]:
-    """Pick up to m_max isolated nodes (incl. primary) for an active task."""
+    """Pick up to m_max isolated nodes (incl. primary) for an active task.
+
+    With ``ablation["fault_domain"] is False`` the fault-domain isolation
+    constraint is dropped, so replicas may co-locate in the same domain (and a
+    node fault can wipe out several at once -> higher violation rate).
+    """
     inst = repairer.inst
     nodes = inst.continuum.nodes
+    isolate = repairer.ablation.get("fault_domain", True)
     chosen = [primary_k]
     domains = {nodes[primary_k].fault_domain}
     while len(chosen) < m_max:
         cands = [k for k in nodes
-                 if k not in chosen and nodes[k].fault_domain not in domains
+                 if k not in chosen
+                 and (not isolate or nodes[k].fault_domain not in domains)
                  and repairer.feasible_node(i, k, used_cpu, used_mem, where, finish, node_free)]
         if not cands:
             break
@@ -167,12 +174,20 @@ def _repair_core(instance: Instance, partial: Solution, removed: list[int],
                  if repairer.feasible_node(i, k, used_cpu, used_mem, where, finish, node_free)]
         if not cands:
             cands = [min(node_free, key=lambda k: node_free[k])]
-        best_k = min(cands, key=lambda k: score_fn(repairer, i, k, where, finish, node_free, used_cpu))
+        scores = score_fn(repairer, i, cands, where, finish, node_free, used_cpu)
+        best_k = min(cands, key=lambda k: scores[k])
 
-        # mode decision: passive unless estimated recovery risk exceeds budget
+        # mode decision: passive unless estimated recovery risk exceeds budget.
+        # ablation["hybrid"] forces a single fault-tolerance mode:
+        #   False + "all-active"  -> always active backup
+        #   False + "all-passive" -> always passive recompute (overrides budget)
         _, comm_in = repairer._comm_in(i, best_k, where, finish)
         recrisk = repairer.rec_risk(i, best_k, comm_in)
-        active = recrisk > repairer.budget
+        hybrid = repairer.ablation.get("hybrid", True)
+        if hybrid is False:
+            active = repairer.ablation.get("hybrid_mode", "all-active") == "all-active"
+        else:
+            active = recrisk > repairer.budget
         nodes = [best_k]
         if active:
             nodes = _choose_active_replicas(repairer, sol, i, best_k, where, finish,
@@ -186,19 +201,22 @@ def _repair_core(instance: Instance, partial: Solution, removed: list[int],
     return sol
 
 
-# -- score functions ---------------------------------------------------------
-def _score_insert(r, i, k, where, finish, node_free, used_cpu):
-    return r.insert_cost(i, k, where, finish, node_free, used_cpu)
+# -- score functions (return {candidate_node: score}; lower = preferred) -----
+def _score_insert(r, i, cands, where, finish, node_free, used_cpu):
+    return r.insert_scores(i, cands, where, finish, node_free, used_cpu)
 
 
-def _score_recdelay(r, i, k, where, finish, node_free, used_cpu):
-    _, comm_in = r._comm_in(i, k, where, finish)
-    return r.rec_risk(i, k, comm_in)
+def _score_recdelay(r, i, cands, where, finish, node_free, used_cpu):
+    out = {}
+    for k in cands:
+        _, comm_in = r._comm_in(i, k, where, finish)
+        out[k] = r.rec_risk(i, k, comm_in)
+    return out
 
 
-def _score_cost(r, i, k, where, finish, node_free, used_cpu):
-    node = r.inst.continuum.nodes[k]
-    return node.cost_coef * exec_time(r.inst, i, k)
+def _score_cost(r, i, cands, where, finish, node_free, used_cpu):
+    return {k: r.inst.continuum.nodes[k].cost_coef * exec_time(r.inst, i, k)
+            for k in cands}
 
 
 # -- repair operators ---------------------------------------------------------

@@ -92,12 +92,13 @@ rec_cost:
 # ---- ALNS insertion cost weights (Implementation Spec sec.15) ---------------
 # InsertCost = w1*ECT + w2*Cost + w3*Risk + w4*RecRisk + w5*Load - w6*GCNScore
 insert_cost:
+  normalize: true          # min-max normalise components within each candidate set
   w1: 1.0
   w2: 0.5
   w3: 1.0
   w4: 2.0
   w5: 0.5
-  w6: 1.0
+  w6: 3.0                   # GCN reward weight (scaled with h_i; see sec.14)
 
 # ---- ALNS search parameters (Implementation Spec sec.15) --------------------
 alns:

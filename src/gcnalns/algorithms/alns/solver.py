@@ -62,7 +62,7 @@ class ALNS(Scheduler):
 
     def _full_eval(self, instance, sol, factory):
         sched = compute_schedule(instance, sol, factory, self.cfg)
-        res = verify(instance, sol, factory, self.cfg, sched)
+        res = verify(instance, sol, factory, self.cfg, sched, ablation=self.ablation)
         bd = compute_cost(instance, sol, sched, factory, self.cfg,
                           recovery_cost=res.recovery_cost)
         return res, bd.total
@@ -112,7 +112,8 @@ class ALNS(Scheduler):
             r_name = self._roulette(r_names, rw)
 
             budget = max(effective_budget(instance, min(cur_cbase, instance.deadline)), 0.0)
-            repairer = Repairer(instance, factory, self.cfg, budget, gcn_score)
+            repairer = Repairer(instance, factory, self.cfg, budget, gcn_score,
+                                ablation=self.ablation)
 
             cand = cur.clone()
             removed = DESTROY_OPS[d_name](instance, cand, self.cfg, self.rng)
