@@ -9,6 +9,16 @@
 大规模主实验结论（见 `results/csv/summary_by_algorithm.csv`）：**仅 ALNS / GCN-ALNS 达成显著 SLA 可行率**
 （GCN-ALNS 可行率 0.464、成本 541.8 ≤ ALNS 0.469 / 543.9；启发式 baseline 可行率 ≤0.18，Full-Proactive 0 且成本最高 2313），符合论文预期。
 
+## 本机完整复现（2026-07，`d:\zyx\gcn-alns`，32 核 + 1×A40 49GB + 64GB RAM）—— 已全部跑完
+- **环境**：conda `gcnALNS`（python 3.12）从零安装：numpy/pandas/networkx/pyyaml/matplotlib/scipy/tqdm/pytest + **torch 2.5.1+cu121**（CUDA 可用，A40×1）。`torch-geometric` 未装（模型用自包含稠密 GCN，见阶段6，不影响）。运行统一 `$env:PYTHONPATH="src"` + 环境 python 直调（`conda run` 会吞掉脚本的 `--n/--workers` 等参数，勿用）。`pytest tests/test_recovery_verifier.py` → 4 passed。
+- **数据/模型**：90 实例（small/medium/large=45/30/15）；GCN 数据集 33 可行实例（train23/val5/test5）；模型 `results/gcn_model.pt` **test pairwise AUC=0.902 / val=0.899**（early stop@40，~37s）。
+- **实验全量**：`main_small`(1260)/`main_medium`(840)/`main_large`(270)；`ablation` 8 变体×375；`sensitivity` 8 组×225；`scalability` 720。`runs.csv` 共 **7890** 条。已 `aggregate`（6 CSV）+ `viz.plots`（**23 张图**）。
+- **最终主对比（全 90 实例汇总，`summary_by_algorithm.csv`）**：GCN-ALNS 可行率 0.426 / 总成本 **608.5** / 仅可行解 **681.6**；ALNS 0.429 / 618.6 / 702.6；baseline 可行率 ≤0.18（HEFT/No-FT 0.178、PEFT 0.144），Full-Proactive 0.000 且成本最高 2312.8。按场景：**loose 下 ALNS/GCN-ALNS 可行率 0.95+，baseline ≤0.43**。
+- **消融关键结论**：去掉 **Dynamic Resched → 可行率 0.392 崩到 0.093**（最关键组件）；去掉 GCN → 可行率不变但**成本 393→411**（GCN 主要降成本）；Recovery Penalty 对可行+成本双重要；全主动可行率高但成本高、全被动可行率降（hybrid 选择性备份最优）。
+- **敏感性**：`recovery_penalty_weight` 增大→可行率微升、成本微升（默认 100 折中）；`insert_cost.w6` 在 **0.5 处可行率达峰 0.360**（w6=0 为 0.329）。
+- **可扩展性/瓶颈**：ALNS 系运行时随规模超线性——large(500 任务)单次求解 **~1.7 万秒(≈5h)**，是唯一工程瓶颈（纯 Python ALNS+verify）。
+- **逐图分析报告**：见 **`results/REPORT.md`**（分析全部 23 张图 + 结论/优化建议）。
+
 ## 技术栈与环境
 - **当前实验机**：工作区 `e:\user\zhangyuxuan\gcn-alns\gcn-alns`，CPU **32 核**、**4×A40**(46/49GB)、128GB RAM。运行需 `$env:PYTHONPATH="src"`。
 - **torch `2.5.1+cu121`，CUDA 可用（4 卡）**——旧机的 "torch 2.4.1+cpu / CPU-only" 描述已过时；GCN 训练用 `--device cuda:0`。
