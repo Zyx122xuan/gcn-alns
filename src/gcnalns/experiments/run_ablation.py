@@ -10,6 +10,9 @@ Variants (toggled via the ALNS ``ablation`` dict):
 * w/o Dynamic Resched   - disable post-fault global rescheduling (local only)
 * w/o Hybrid (all-passive) - force passive recompute for every task
 * w/o Hybrid (all-active)  - force active backup for every task
+* w/o Warm Start        - skip the GCN-guided greedy warm start (A1)
+* w/o GCN Mode          - drop the learned FT-mode / replica guidance (A2)
+* w/o GCN Destroy       - disable the low_gcn directed destroy operator (A3)
 
 All switches are now wired into the ALNS core / operators / verifier
 (insertion.py, operators.py, recovery.py), so every variant differs from Full.
@@ -34,6 +37,9 @@ VARIANTS = {
     "w/o Dynamic Resched": {"dynamic_resched": False},
     "w/o Hybrid (all-passive)": {"hybrid": False, "hybrid_mode": "all-passive"},
     "w/o Hybrid (all-active)": {"hybrid": False, "hybrid_mode": "all-active"},
+    "w/o Warm Start": {"warm_start": False},
+    "w/o GCN Mode": {"gcn_mode": False},
+    "w/o GCN Destroy": {"gcn_destroy": False},
 }
 
 

@@ -3,9 +3,5 @@ __pycache__/
 *.egg-info/
 .venv/
 .pytest_cache/
-data/raw/
-data/instances/
-data/gcn/
-results/
 *.pt
 .DS_Store

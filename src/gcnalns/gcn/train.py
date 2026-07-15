@@ -30,6 +30,9 @@ def _to_tensors(s: InstanceSample, device):
     pos_w = getattr(s, "pos_w", None)
     if pos_w is None:
         pos_w = np.ones(len(s.pos), dtype=np.float32)
+    pos_mode = getattr(s, "pos_mode", None)
+    if pos_mode is None:
+        pos_mode = np.zeros(len(s.pos), dtype=np.float32)
     return {
         "node_feat": torch.tensor(f.node_feat, dtype=torch.float32, device=device),
         "node_domain": torch.tensor(f.node_domain, dtype=torch.long, device=device),
@@ -38,6 +41,7 @@ def _to_tensors(s: InstanceSample, device):
         "inter": torch.tensor(f.inter, dtype=torch.float32, device=device),
         "pos": s.pos,
         "pos_w": np.asarray(pos_w, dtype=np.float32),
+        "pos_mode": np.asarray(pos_mode, dtype=np.float32),
         "feas_mask": s.feas_mask,
     }
 
@@ -50,14 +54,15 @@ def _positives_by_task(pos: np.ndarray, T: int) -> dict[int, set]:
 
 
 def _sample_pairs(s, neg_per_pos: int, batch_size: int, rng: np.random.Generator):
-    """Return (task_idx, pos_node, neg_node[neg], pos_weight) for one instance."""
+    """Return (task_idx, pos_node, neg_node[neg], pos_weight, pos_mode)."""
     pos = s["pos"]
     feas = s["feas_mask"]
     pos_w = s["pos_w"]
+    pos_mode = s["pos_mode"]
     if len(pos) == 0:
         return None
     by_task = _positives_by_task(pos, feas.shape[0])
-    t_list, p_list, n_list, w_list = [], [], [], []
+    t_list, p_list, n_list, w_list, m_list = [], [], [], [], []
     for j, (tp, kp) in enumerate(pos):
         tp, kp = int(tp), int(kp)
         feasible = np.where(feas[tp] > 0)[0]
@@ -70,19 +75,23 @@ def _sample_pairs(s, neg_per_pos: int, batch_size: int, rng: np.random.Generator
         p_list.append(kp)
         n_list.append(negs)
         w_list.append(float(pos_w[j]) if j < len(pos_w) else 1.0)
+        m_list.append(float(pos_mode[j]) if j < len(pos_mode) else 0.0)
     if not t_list:
         return None
     t_arr = np.array(t_list, dtype=np.int64)
     p_arr = np.array(p_list, dtype=np.int64)
     n_arr = np.stack(n_list, axis=0)               # [P, neg]
     w_arr = np.array(w_list, dtype=np.float32)
+    m_arr = np.array(m_list, dtype=np.float32)
     if t_arr.size > batch_size:                    # subsample to batch budget
         sel = rng.choice(t_arr.size, size=batch_size, replace=False)
-        t_arr, p_arr, n_arr, w_arr = t_arr[sel], p_arr[sel], n_arr[sel], w_arr[sel]
-    return t_arr, p_arr, n_arr, w_arr
+        t_arr, p_arr, n_arr = t_arr[sel], p_arr[sel], n_arr[sel]
+        w_arr, m_arr = w_arr[sel], m_arr[sel]
+    return t_arr, p_arr, n_arr, w_arr, m_arr
 
 
-def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, rank_w, device):
+def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, m_arr,
+                   rank_w, mode_w, device):
     h_node = model.encode_nodes(tens["node_feat"], tens["node_domain"], tens["edge_index"])
     h_task = model.encode_tasks(tens["task_feat"])
     P, neg = n_arr.shape
@@ -103,7 +112,15 @@ def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, rank_w, device):
         s_pos, torch.ones_like(s_pos), weight=w_t)
     bce_neg = F.binary_cross_entropy_with_logits(s_neg, torch.zeros_like(s_neg))
     rank = -(w_t * F.logsigmoid(s_pos.unsqueeze(1) - s_neg.view(P, neg)).mean(dim=1)).mean()
-    return bce_pos + bce_neg + rank_w * rank
+
+    loss = bce_pos + bce_neg + rank_w * rank
+    # FT-mode head (Part C): supervise P(active) on the chosen positive pairs.
+    if mode_w > 0.0:
+        m_logit = model.mode_pairs(h_task, h_node, t_t, p_t, inter[t_t, p_t])
+        m_target = torch.tensor(m_arr, dtype=torch.float32, device=device)
+        loss = loss + mode_w * F.binary_cross_entropy_with_logits(
+            m_logit, m_target, weight=w_t)
+    return loss
 
 
 @torch.no_grad()
@@ -164,6 +181,7 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
     neg = int(g["neg_per_pos"])
     bs = int(g["batch_size"])
     rank_w = float(g["rank_loss_weight"])
+    mode_w = float(g.get("mode_loss_weight", 0.5))
     max_epochs = int(g["max_epochs"])
     patience = int(g["early_stop_patience"])
 
@@ -174,11 +192,12 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
             pairs = _sample_pairs(tens[iid], neg, bs, rng)
             if pairs is None:
                 continue
-            t_arr, p_arr, n_arr, w_arr = pairs
+            t_arr, p_arr, n_arr, w_arr, m_arr = pairs
             if train_mode:
                 opt.zero_grad()
             with torch.set_grad_enabled(train_mode):
-                loss = _instance_loss(model, tens[iid], t_arr, p_arr, n_arr, w_arr, rank_w, dev)
+                loss = _instance_loss(model, tens[iid], t_arr, p_arr, n_arr,
+                                      w_arr, m_arr, rank_w, mode_w, dev)
                 if train_mode:
                     loss.backward()
                     opt.step()
@@ -224,7 +243,8 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
                       f"(tasks={m['n_tasks_scored']})")
 
     return model, {"history": history, "best_val": best_val,
-                   "num_domains": num_domains, "ranking": rank_metrics}
+                   "num_domains": num_domains, "ranking": rank_metrics,
+                   "has_mode_head": mode_w > 0.0}
 
 
 def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> None:
@@ -233,6 +253,7 @@ def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> N
     torch.save({
         "state_dict": model.state_dict(),
         "num_domains": meta["num_domains"],
+        "has_mode_head": bool(meta.get("has_mode_head", False)),
         "gcn_cfg": cfg["gcn"],
         "meta": {k: v for k, v in meta.items() if k != "history"},
     }, path)

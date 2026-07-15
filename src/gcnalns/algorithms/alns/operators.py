@@ -35,7 +35,7 @@ def _strip(sol: Solution, removed: list[int]) -> None:
         sol.mode.pop(i, None)
 
 
-def random_removal(instance, sol, cfg, rng):
+def random_removal(instance, sol, cfg, rng, gcn_score=None):
     q = _q(instance, cfg, rng)
     tasks = list(sol.placement.keys())
     removed = list(rng.choice(tasks, size=min(q, len(tasks)), replace=False))
@@ -44,7 +44,7 @@ def random_removal(instance, sol, cfg, rng):
     return removed
 
 
-def criticality_removal(instance, sol, cfg, rng):
+def criticality_removal(instance, sol, cfg, rng, gcn_score=None):
     q = _q(instance, cfg, rng)
     tasks = sorted(sol.placement.keys(),
                    key=lambda t: instance.workflow.tasks[t].criticality, reverse=True)
@@ -53,7 +53,7 @@ def criticality_removal(instance, sol, cfg, rng):
     return removed
 
 
-def high_risk_removal(instance, sol, cfg, rng):
+def high_risk_removal(instance, sol, cfg, rng, gcn_score=None):
     q = _q(instance, cfg, rng)
 
     def risk(i):
@@ -68,7 +68,7 @@ def high_risk_removal(instance, sol, cfg, rng):
     return removed
 
 
-def congested_node_removal(instance, sol, cfg, rng):
+def congested_node_removal(instance, sol, cfg, rng, gcn_score=None):
     q = _q(instance, cfg, rng)
     load = {k: 0 for k in instance.continuum.nodes}
     for i, repl in sol.placement.items():
@@ -88,11 +88,31 @@ def congested_node_removal(instance, sol, cfg, rng):
     return removed
 
 
-def over_backup_removal(instance, sol, cfg, rng):
+def over_backup_removal(instance, sol, cfg, rng, gcn_score=None):
     q = _q(instance, cfg, rng)
     actives = [i for i in sol.placement if sol.mode.get(i)]
     actives.sort(key=lambda t: instance.workflow.tasks[t].criticality)  # low crit first
     removed = actives[:q]
+    _strip(sol, removed)
+    return removed
+
+
+def low_gcn_removal(instance, sol, cfg, rng, gcn_score=None):
+    """GCN-guided destroy (A3): remove tasks whose *current* host node the model
+    scores lowest, so repair can relocate them toward high-preference nodes.
+
+    Falls back to random removal when no GCN hook is available (plain ALNS).
+    """
+    if gcn_score is None:
+        return random_removal(instance, sol, cfg, rng)
+    q = _q(instance, cfg, rng)
+
+    def cur_score(i):
+        repl = sol.placement[i]
+        # a task's dislike = 1 - mean GCN score over its current hosting nodes
+        return sum(gcn_score(i, k) for k in repl) / max(len(repl), 1)
+    tasks = sorted(sol.placement.keys(), key=cur_score)  # lowest score first
+    removed = tasks[:q]
     _strip(sol, removed)
     return removed
 
@@ -103,6 +123,7 @@ DESTROY_OPS = {
     "high_risk": high_risk_removal,
     "congested": congested_node_removal,
     "over_backup": over_backup_removal,
+    "low_gcn": low_gcn_removal,
 }
 
 
@@ -120,6 +141,9 @@ def _choose_active_replicas(repairer: Repairer, sol, i, primary_k, where, finish
     inst = repairer.inst
     nodes = inst.continuum.nodes
     isolate = repairer.ablation.get("fault_domain", True)
+    # A2: bias replica placement toward learned high-preference nodes when the
+    # gcn_mode switch is on and a GCN score hook is available.
+    gscore = repairer.gcn_score if repairer.ablation.get("gcn_mode", True) else None
     chosen = [primary_k]
     domains = {nodes[primary_k].fault_domain}
     while len(chosen) < m_max:
@@ -129,7 +153,8 @@ def _choose_active_replicas(repairer: Repairer, sol, i, primary_k, where, finish
                  and repairer.feasible_node(i, k, used_cpu, used_mem, where, finish, node_free)]
         if not cands:
             break
-        k = max(cands, key=lambda k: (nodes[k].compute / (1.0 + used_cpu.get(k, 0.0)),
+        k = max(cands, key=lambda k: (gscore(i, k) if gscore else 0.0,
+                                      nodes[k].compute / (1.0 + used_cpu.get(k, 0.0)),
                                       -nodes[k].failure_rate))
         chosen.append(k)
         domains.add(nodes[k].fault_domain)
@@ -188,6 +213,11 @@ def _repair_core(instance: Instance, partial: Solution, removed: list[int],
             active = repairer.ablation.get("hybrid_mode", "all-active") == "all-active"
         else:
             active = recrisk > repairer.budget
+            # A2: let the learned FT-mode head request an active backup where it
+            # predicts one is needed (only if a mode hook is present + switch on).
+            gmode = repairer.gcn_mode if repairer.ablation.get("gcn_mode", True) else None
+            if gmode is not None and gmode(i, best_k) >= 0.5:
+                active = True
         nodes = [best_k]
         if active:
             nodes = _choose_active_replicas(repairer, sol, i, best_k, where, finish,

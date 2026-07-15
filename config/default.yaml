@@ -98,7 +98,9 @@ insert_cost:
   w3: 1.0
   w4: 2.0
   w5: 0.5
-  w6: 3.0                   # GCN reward weight (scaled with h_i; see sec.14)
+  w6: 0.5                   # GCN reward weight (scaled with h_i; see sec.14).
+                           # Sensitivity sweep peaks feasibility at ~0.5; larger
+                           # values over-bias placement without extra benefit.
 
 # ---- ALNS search parameters (Implementation Spec sec.15) --------------------
 alns:
@@ -111,7 +113,8 @@ alns:
   segment_length: 50       # iterations per adaptive-weight update segment
   reaction_factor: 0.1     # operator weight smoothing
   scores: {best: 33.0, better: 9.0, accepted: 13.0}
-  no_improve_stop: 300     # terminate after this many non-improving iterations
+  no_improve_stop: 300     # non-improving iterations before a restart / stop
+  restarts: 2              # diversifying restarts on stagnation (helps tight)
   recovery_penalty_weight: 100.0   # Phi penalty on max(0, R_max - R_eff)
   deadline_penalty_weight: 200.0   # penalty on max(0, C_base - D)
 
@@ -133,6 +136,7 @@ gcn:
   early_stop_patience: 10
   neg_per_pos: 5
   rank_loss_weight: 0.1
+  mode_loss_weight: 0.5         # weight of the FT-mode (active/passive) head BCE
   l2_reg: 1.0e-4
   high_quality_top_frac: 0.20   # top 20% feasible solutions by cost
   split: {train: 0.70, val: 0.15, test: 0.15}

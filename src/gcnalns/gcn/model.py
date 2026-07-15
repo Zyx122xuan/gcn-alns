@@ -77,6 +77,19 @@ class GCNScorer(nn.Module):
             nn.Linear(3 * h + INTER_DIM, h), nn.ReLU(), nn.Dropout(self.dropout),
             nn.Linear(h, 1),
         )
+        # Second head (Part C): predicts P(active backup) for a (task, node)
+        # placement, so the GCN can also drive the fault-tolerance mode decision.
+        self.mode_mlp = nn.Sequential(
+            nn.Linear(3 * h + INTER_DIM, h), nn.ReLU(), nn.Dropout(self.dropout),
+            nn.Linear(h, 1),
+        )
+        # Second head (Part C): predicts P(active backup) for a (task, node)
+        # pair, so the learned guidance can drive the fault-tolerance mode - not
+        # just placement - which is what actually moves the feasibility needle.
+        self.mode_mlp = nn.Sequential(
+            nn.Linear(3 * h + INTER_DIM, h), nn.ReLU(), nn.Dropout(self.dropout),
+            nn.Linear(h, 1),
+        )
 
     # -- encoders -----------------------------------------------------------
     def encode_nodes(self, node_feat: torch.Tensor, node_domain: torch.Tensor,
@@ -102,6 +115,15 @@ class GCNScorer(nn.Module):
         hk = h_node[node_idx]
         feat = torch.cat([hi, hk, hi * hk, inter], dim=1)
         return self.score_mlp(feat).squeeze(-1)
+
+    def mode_pairs(self, h_task: torch.Tensor, h_node: torch.Tensor,
+                   task_idx: torch.Tensor, node_idx: torch.Tensor,
+                   inter: torch.Tensor) -> torch.Tensor:
+        """FT-mode logits [P] for a batch of (task, node) pairs (P(active))."""
+        hi = h_task[task_idx]
+        hk = h_node[node_idx]
+        feat = torch.cat([hi, hk, hi * hk, inter], dim=1)
+        return self.mode_mlp(feat).squeeze(-1)
 
     def forward(self, node_feat, node_domain, edge_index, task_feat,
                 task_idx, node_idx, inter) -> torch.Tensor:

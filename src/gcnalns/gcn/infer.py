@@ -25,9 +25,10 @@ from .model import GCNScorer
 class GCNScorerRunner:
     """Wraps a trained model; builds per-instance score tables on demand."""
 
-    def __init__(self, model: GCNScorer, cfg: Config):
+    def __init__(self, model: GCNScorer, cfg: Config, has_mode_head: bool = False):
         self.model = model
         self.cfg = cfg
+        self.has_mode_head = has_mode_head
         self.model.eval()
 
     @classmethod
@@ -35,8 +36,12 @@ class GCNScorerRunner:
         cfg = cfg or load_config()
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         model = GCNScorer(cfg, int(ckpt["num_domains"]))
-        model.load_state_dict(ckpt["state_dict"])
-        return cls(model, cfg)
+        # strict=False so old checkpoints without the FT-mode head still load
+        # (the mode head then stays random and is disabled via has_mode_head).
+        model.load_state_dict(ckpt["state_dict"], strict=False)
+        has_mode = bool(ckpt.get("has_mode_head",
+                                 ckpt.get("meta", {}).get("has_mode_head", False)))
+        return cls(model, cfg, has_mode_head=has_mode)
 
     @torch.no_grad()
     def score_table(self, instance: Instance, factory: LinkFactory) -> np.ndarray:
@@ -82,3 +87,62 @@ class GCNScorerRunner:
             return float(table[ti, kk])
 
         return gcn_score
+
+    @torch.no_grad()
+    def _tables(self, instance: Instance, factory: LinkFactory):
+        """Compute the placement-score and (optional) FT-mode tables in one
+        forward pass. Returns ``(scores[T,N], modes[T,N]|None, task_pos, node_pos)``.
+        Infeasible actions are masked to 0 in the score table."""
+        feats = build_features(instance, self.cfg, factory)
+        node_feat = torch.tensor(feats.node_feat, dtype=torch.float32)
+        node_domain = torch.tensor(feats.node_domain, dtype=torch.long)
+        edge_index = torch.tensor(feats.edge_index, dtype=torch.long)
+        task_feat = torch.tensor(feats.task_feat, dtype=torch.float32)
+        inter = torch.tensor(feats.inter, dtype=torch.float32)
+
+        h_node = self.model.encode_nodes(node_feat, node_domain, edge_index)
+        h_task = self.model.encode_tasks(task_feat)
+
+        T, N = feats.num_tasks, feats.num_nodes
+        t_idx = torch.arange(T).repeat_interleave(N)
+        k_idx = torch.arange(N).repeat(T)
+        inter_flat = inter.view(T * N, -1)
+
+        s_logits = self.model.score_pairs(h_task, h_node, t_idx, k_idx, inter_flat)
+        scores = torch.sigmoid(s_logits).view(T, N).numpy()
+
+        from .features import INTERACTION_FEATURE_NAMES
+        bidx = [INTERACTION_FEATURE_NAMES.index(b)
+                for b in ("cpu_fit", "mem_fit", "deadline_fit")]
+        feas = feats.inter[:, :, bidx].min(axis=2) > 0.5
+        scores = np.where(feas, scores, 0.0).astype(np.float32)
+
+        modes = None
+        if self.has_mode_head:
+            m_logits = self.model.mode_pairs(h_task, h_node, t_idx, k_idx, inter_flat)
+            modes = torch.sigmoid(m_logits).view(T, N).numpy().astype(np.float32)
+        return scores, modes, feats.task_pos, feats.node_pos
+
+    def make_hooks(self, instance: Instance, factory: LinkFactory):
+        """Return ``(gcn_score, gcn_mode)`` callbacks. ``gcn_mode`` is ``None``
+        when the loaded model has no trained FT-mode head."""
+        scores, modes, task_pos, node_pos = self._tables(instance, factory)
+
+        def gcn_score(i: int, k: int) -> float:
+            ti = task_pos.get(i)
+            kk = node_pos.get(k)
+            if ti is None or kk is None:
+                return 0.0
+            return float(scores[ti, kk])
+
+        if modes is None:
+            return gcn_score, None
+
+        def gcn_mode(i: int, k: int) -> float:
+            ti = task_pos.get(i)
+            kk = node_pos.get(k)
+            if ti is None or kk is None:
+                return 0.0
+            return float(modes[ti, kk])
+
+        return gcn_score, gcn_mode

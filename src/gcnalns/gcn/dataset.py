@@ -54,6 +54,7 @@ class InstanceSample:
     feas_mask: np.ndarray      # [T, N] uint8 feasible candidate mask
     n_feasible_solutions: int
     pos_w: np.ndarray = None   # [K] per-positive importance weight (Spec sec.13)
+    pos_mode: np.ndarray = None  # [K] FT-mode label (1=active backup, 0=passive)
 
 
 def _feasible_mask(feats: InstanceFeatures) -> np.ndarray:
@@ -120,6 +121,9 @@ def build_instance_sample(path: Path, cfg: Config,
     # margin. A pair appearing in several solutions keeps its largest weight.
     tasks = instance.workflow.tasks
     pos_w: dict[tuple[int, int], float] = {}
+    # FT-mode label per pair, taken from the solution that gave its max weight
+    # (Part C): 1 => the task used an active backup, 0 => passive recompute.
+    pos_mode: dict[tuple[int, int], float] = {}
     for _, sol, r_max, r_eff in high_quality:
         safety = _solution_safety(r_max, r_eff)
         for tid, repl in sol.placement.items():
@@ -128,11 +132,14 @@ def build_instance_sample(path: Path, cfg: Config,
                 continue
             h_i = tasks[tid].criticality
             w = (1.0 + h_i) * safety
+            active = 1.0 if sol.is_active(tid) else 0.0
             for k in repl:
                 kp = feats.node_pos.get(k)
                 if kp is not None:
                     key = (tp, kp)
-                    pos_w[key] = max(pos_w.get(key, 0.0), w)
+                    if key not in pos_w or w > pos_w[key]:
+                        pos_w[key] = w
+                        pos_mode[key] = active
 
     pos = sorted(pos_w.keys())
     feas_mask = _feasible_mask(feats)
@@ -143,11 +150,14 @@ def build_instance_sample(path: Path, cfg: Config,
     if pos:
         pos_arr = np.array(pos, dtype=np.int64)
         w_arr = np.array([pos_w[p] for p in pos], dtype=np.float32)
+        mode_arr = np.array([pos_mode[p] for p in pos], dtype=np.float32)
     else:
         pos_arr = np.zeros((0, 2), np.int64)
         w_arr = np.zeros((0,), np.float32)
+        mode_arr = np.zeros((0,), np.float32)
     return InstanceSample(feats=feats, pos=pos_arr, feas_mask=feas_mask,
-                          n_feasible_solutions=len(feasible), pos_w=w_arr)
+                          n_feasible_solutions=len(feasible), pos_w=w_arr,
+                          pos_mode=mode_arr)
 
 
 def split_instances(iids: list[str], cfg: Config) -> dict[str, list[str]]:

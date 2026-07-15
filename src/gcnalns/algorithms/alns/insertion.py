@@ -27,12 +27,16 @@ GCNScoreFn = Callable[[int, int], float]
 class Repairer:
     def __init__(self, instance: Instance, factory: LinkFactory, cfg: Config,
                  budget: float, gcn_score: GCNScoreFn | None = None,
-                 ablation: dict | None = None):
+                 ablation: dict | None = None,
+                 gcn_mode: GCNScoreFn | None = None):
         self.inst = instance
         self.factory = factory
         self.cfg = cfg
         self.budget = budget
         self.gcn_score = gcn_score
+        # optional learned P(active) hook (Part C mode head); None if the loaded
+        # model has no mode head or the gcn_mode ablation switch is off.
+        self.gcn_mode = gcn_mode
         self.ablation = ablation or {}
         self.w = cfg["insert_cost"]
         self.normalize = bool(self.w.get("normalize", True))
