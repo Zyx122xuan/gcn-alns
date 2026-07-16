@@ -24,6 +24,12 @@ sla:
     tight:  {alpha: 1.15, beta: 0.05}
     medium: {alpha: 1.30, beta: 0.10}
     loose:  {alpha: 1.50, beta: 0.20}
+    # "hard but solvable" tiers: tight deadline (alpha 1.15) but relaxed recovery
+    # budget, so feasibility lands in the discriminative 0.3-0.7 band instead of
+    # tight's near-empty region. Built into dedicated instance sets via
+    # instance_builder --scenarios (they do NOT feed the default 3-scenario sets).
+    tight2: {alpha: 1.15, beta: 0.10}
+    tight3: {alpha: 1.15, beta: 0.15}
   default_scenario: medium
 
 # ---- Computing-continuum layering (Implementation Spec sec.3, sec.4) --------
@@ -137,6 +143,8 @@ gcn:
   neg_per_pos: 5
   rank_loss_weight: 0.1
   mode_loss_weight: 0.5         # weight of the FT-mode (active/passive) head BCE
+  mode_pos_weight: 0.0          # BCE pos_weight for rare active labels; <=0 => auto
+                                # from train active/passive ratio (capped at 50)
   l2_reg: 1.0e-4
   high_quality_top_frac: 0.20   # top 20% feasible solutions by cost
   split: {train: 0.70, val: 0.15, test: 0.15}

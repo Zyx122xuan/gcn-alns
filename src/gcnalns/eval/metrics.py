@@ -32,7 +32,8 @@ METRIC_FIELDS = (
     "n_faults", "active_backup_ratio",
     "cost_total", "cost_compute", "cost_backup", "cost_comm",
     "cost_reserve", "cost_recovery",
-    "runtime", "verify_time", "gcn_infer_time", "convergence_iter", "prune_ratio",
+    "runtime", "verify_time", "gcn_infer_time", "convergence_iter",
+    "first_feasible_iter", "prune_ratio",
 )
 
 
@@ -64,6 +65,7 @@ def evaluate(instance: Instance, solution: Solution, cfg: Config,
     meta = instance.meta
     runtime = getattr(scheduler, "runtime", 0.0) if scheduler else 0.0
     conv = getattr(scheduler, "convergence_iter", 0) if scheduler else 0
+    first_feas = getattr(scheduler, "first_feasible_iter", -1) if scheduler else -1
     prune = getattr(scheduler, "prune_ratio", 0.0) if scheduler else 0.0
     gcn_t = getattr(scheduler, "gcn_infer_time", 0.0) if scheduler else 0.0
 
@@ -100,5 +102,6 @@ def evaluate(instance: Instance, solution: Solution, cfg: Config,
         "verify_time": verify_time,
         "gcn_infer_time": gcn_t,
         "convergence_iter": conv,
+        "first_feasible_iter": first_feas,
         "prune_ratio": prune,
     }

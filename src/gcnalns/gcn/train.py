@@ -91,7 +91,7 @@ def _sample_pairs(s, neg_per_pos: int, batch_size: int, rng: np.random.Generator
 
 
 def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, m_arr,
-                   rank_w, mode_w, device):
+                   rank_w, mode_w, device, mode_pw=1.0):
     h_node = model.encode_nodes(tens["node_feat"], tens["node_domain"], tens["edge_index"])
     h_task = model.encode_tasks(tens["task_feat"])
     P, neg = n_arr.shape
@@ -115,11 +115,14 @@ def _instance_loss(model, tens, t_arr, p_arr, n_arr, w_arr, m_arr,
 
     loss = bce_pos + bce_neg + rank_w * rank
     # FT-mode head (Part C): supervise P(active) on the chosen positive pairs.
+    # active positives are rare (~2.5%), so up-weight them via pos_weight to
+    # stop the head collapsing to always-passive.
     if mode_w > 0.0:
         m_logit = model.mode_pairs(h_task, h_node, t_t, p_t, inter[t_t, p_t])
         m_target = torch.tensor(m_arr, dtype=torch.float32, device=device)
+        pw = torch.tensor(float(mode_pw), dtype=torch.float32, device=device)
         loss = loss + mode_w * F.binary_cross_entropy_with_logits(
-            m_logit, m_target, weight=w_t)
+            m_logit, m_target, weight=w_t, pos_weight=pw)
     return loss
 
 
@@ -164,6 +167,44 @@ def evaluate_ranking(model, tens: dict, iids: list[str]) -> dict[str, float]:
     }
 
 
+@torch.no_grad()
+def evaluate_mode(model, tens: dict, iids: list[str]) -> dict[str, float]:
+    """FT-mode head quality on chosen positives: AUC(active vs passive),
+    accuracy@0.5, and the active-label prevalence (so we can tell whether the
+    head learned anything beyond the majority-passive prior)."""
+    model.eval()
+    scores, labels = [], []
+    for iid in iids:
+        s = tens[iid]
+        pos = s["pos"]
+        if len(pos) == 0:
+            continue
+        m = s["pos_mode"]
+        h_node = model.encode_nodes(s["node_feat"], s["node_domain"], s["edge_index"])
+        h_task = model.encode_tasks(s["task_feat"])
+        inter = s["inter"]
+        t_idx = torch.tensor(pos[:, 0], dtype=torch.long, device=h_node.device)
+        k_idx = torch.tensor(pos[:, 1], dtype=torch.long, device=h_node.device)
+        logit = model.mode_pairs(h_task, h_node, t_idx, k_idx, inter[t_idx, k_idx])
+        prob = torch.sigmoid(logit).detach().cpu().numpy()
+        scores.append(prob)
+        labels.append(np.asarray(m, dtype=np.float32))
+    if not scores:
+        return {"mode_auc": float("nan"), "mode_acc": float("nan"),
+                "n_active": 0, "n_pos": 0}
+    sc = np.concatenate(scores)
+    lb = np.concatenate(labels)
+    pos_s, neg_s = sc[lb > 0.5], sc[lb <= 0.5]
+    if pos_s.size and neg_s.size:
+        corr = sum(float(np.sum(p > neg_s) + 0.5 * np.sum(p == neg_s)) for p in pos_s)
+        auc = corr / (pos_s.size * neg_s.size)
+    else:
+        auc = float("nan")
+    acc = float(np.mean((sc > 0.5) == (lb > 0.5)))
+    return {"mode_auc": auc, "mode_acc": acc,
+            "n_active": int((lb > 0.5).sum()), "n_pos": int(lb.size)}
+
+
 def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
     g = cfg["gcn"]
     dev = torch.device(device)
@@ -185,6 +226,23 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
     max_epochs = int(g["max_epochs"])
     patience = int(g["early_stop_patience"])
 
+    # FT-mode class imbalance: pos_weight for the mode-BCE. If mode_pos_weight<=0
+    # (default), auto-compute from the train-split active/passive ratio (capped),
+    # so the head is not dominated by the ~97.5% passive majority.
+    cfg_mpw = float(g.get("mode_pos_weight", 0.0))
+    if cfg_mpw > 0:
+        mode_pw = cfg_mpw
+    else:
+        n_act = n_pas = 0
+        for iid in split["train"]:
+            pm = tens[iid]["pos_mode"]
+            n_act += int((pm > 0.5).sum())
+            n_pas += int((pm <= 0.5).sum())
+        mode_pw = min(float(n_pas) / max(n_act, 1), 50.0) if n_act > 0 else 1.0
+    if verbose:
+        print(f"  mode-head pos_weight={mode_pw:.2f} "
+              f"(active positives up-weighted for class imbalance)")
+
     def epoch_pass(iids, train_mode: bool):
         model.train(train_mode)
         total, count = 0.0, 0
@@ -197,7 +255,8 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
                 opt.zero_grad()
             with torch.set_grad_enabled(train_mode):
                 loss = _instance_loss(model, tens[iid], t_arr, p_arr, n_arr,
-                                      w_arr, m_arr, rank_w, mode_w, dev)
+                                      w_arr, m_arr, rank_w, mode_w, dev,
+                                      mode_pw=mode_pw)
                 if train_mode:
                     loss.backward()
                     opt.step()
@@ -232,6 +291,7 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
     # Report test-set ranking quality so we can confirm the model learned a
     # useful signal (vs. ~random when AUC ~ 0.5 / top-1 ~ chance).
     rank_metrics = {}
+    mode_metrics = {}
     for split_name in ("val", "test"):
         ids = split.get(split_name) or []
         if ids:
@@ -241,10 +301,18 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
                 print(f"  [{split_name}] top1_hit_rate={m['top1_hit_rate']:.3f} "
                       f"pairwise_auc={m['pairwise_auc']:.3f} "
                       f"(tasks={m['n_tasks_scored']})")
+            if mode_w > 0.0:
+                mode_metrics[split_name] = evaluate_mode(model, tens, ids)
+                if verbose:
+                    mm = mode_metrics[split_name]
+                    print(f"  [{split_name}] mode_auc={mm['mode_auc']:.3f} "
+                          f"mode_acc={mm['mode_acc']:.3f} "
+                          f"(active={mm['n_active']}/{mm['n_pos']})")
 
     return model, {"history": history, "best_val": best_val,
                    "num_domains": num_domains, "ranking": rank_metrics,
-                   "has_mode_head": mode_w > 0.0}
+                   "mode": mode_metrics, "has_mode_head": mode_w > 0.0,
+                   "mode_pos_weight": mode_pw}
 
 
 def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> None:

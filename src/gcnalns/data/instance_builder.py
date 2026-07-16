@@ -140,6 +140,10 @@ def main() -> None:
     parser.add_argument("--scale", default="small", choices=["small", "medium", "large"])
     parser.add_argument("--load", default="medium", choices=["low", "medium", "high"])
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--scenarios", nargs="+", default=None,
+                        help="SLA scenarios to build; default: tight medium loose "
+                             "(extra tiers like tight2/tight3 must be requested "
+                             "explicitly and go into a dedicated instance set)")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -151,7 +155,13 @@ def main() -> None:
     n_nodes = cfg["scales"]["resource_nodes"][args.scale]
     load_level = cfg["scales"]["load_levels"][args.load]
     wf_types = cfg["workflow_types"]
-    scenarios = list(cfg["sla"]["scenarios"].keys())
+    if args.scenarios:
+        unknown = [s for s in args.scenarios if s not in cfg["sla"]["scenarios"]]
+        if unknown:
+            raise SystemExit(f"unknown SLA scenarios: {unknown}")
+        scenarios = list(args.scenarios)
+    else:
+        scenarios = ["tight", "medium", "loose"]
 
     count = 0
     combos = itertools.product(wf_types, scenarios)

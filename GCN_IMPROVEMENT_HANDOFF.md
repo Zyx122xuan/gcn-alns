@@ -4,10 +4,28 @@
 > 主线进度见 `PROGRESS.md`；本轮计划见 `~/.cursor/plans/gcn-impact-and-tight_7df74ef7.plan.md`（**不要编辑**）。
 > 运行统一 `$env:PYTHONPATH="src"`（Windows PowerShell）。
 
+## 增强轮状态(2026-07-16,续)
+在本轮基础上又做了 4 项增强(代码+实验+复盘全部完成,见 `results/REPORT.md` **附录 B**):
+1. **预算扫描**证明 GCN 更快收敛:1000 iter 两者可行率同为 0.416,但 GCN 达可行迭代少 ~28%(119 vs 165);中小预算下 GCN 可行率一致更高。
+2. **"难但可解"档**(`tight2` β0.10 / `tight3` β0.15,`data/instances/hard_small`):tight3 判别区 **GCN-ALNS 可行率 +0.107、成本 -3.9%** vs ALNS——最强单点证据。
+3. **B 系归因**(新增消融开关 `feasibility_first`/`restarts`/`init_diversify`):可行率主功臣是 **B1 可行性优先(-0.061)> B2 重启(-0.035)≫ GCN(-0.016)**;GCN 是其上的正向小增量(省成本+更快达可行)。这是最重要的归因澄清。
+4. **A2 救活**:mode-BCE 加 `pos_weight`(自动 38.8)→ mode 头 **AUC 0.975**(此前失效);模型 A/B 显示求解增益小但为正(可行率 +0.015、配对净 +7/450、主动副本 0.095→0.099)。
+- **已将 A2 修复模型提升为默认** `results/gcn_model.pt`(= 原 `gcn_model_a2.pt`,mode AUC 0.975);旧默认备份为 `results/gcn_model_premodefix.pt`;更早的无 mode 头模型在 `archive_oldcode_20260715/`。
+- 代码改动均过 lint;新增 `run_model_ab.py`、`--variants`/`--model-path`/`--algo-suffix` CLI、`first_feasible_iter` 指标、`fig_budget_convergence`。
+
 ## 一句话状态
+**本轮全部完成（2026-07-16）**：①重建数据集（mode 标签 + 满迭代 teacher，34 可行实例）→ ②重训激活 A2（`gcn_model.pt` 现 `has_mode_head=True`，test AUC 0.889）→ ③tight 重跑主对比(small+medium,repeats10,iter1000)+11 变体消融(repeats5) → ④聚合出 6 CSV/21 图 + 归因复盘。**结论见 `results/REPORT.md` 附录 A**。旧结果归档于 `results/archive_oldcode_20260715/`。
+- **诉求①已解决**：GCN-ALNS 三场景可行率全面 ≥ ALNS（tight 0.044 vs 0.024 ≈1.8×、loose 1.000 vs 0.992），且成本更低（仅可行 407.9 vs 415.8，-1.9%）；`[w/o GCN]` 消融 tight 0.040→0.016 佐证 GCN 现影响可行率而非只降成本。
+- **诉求②部分解决**：tight 绝对可行率仍低（4.4%），β=0.05 是刻意设的压力上界；相对翻倍但量级不变。
+- **注意**：A1/A2/A3 三子组件单独看在噪声带内、互为冗余（消融 repeats=5 太小）；A2 偏弱因 active 标签仅占 2.5%。想强化见 REPORT 附录 A.4。large 本轮未重跑。
+
+<details><summary>（历史）上一轮交接原文</summary>
+
+## 一句话状态（上一轮）
 **代码改造已全部完成并端到端验证通过**（Part A/B/C/D，10 个 todo 全绿，无 lint 错误）。
 现有模型 `results/gcn_model.pt` 是**旧模型（无 mode 头）**，因此 **A1 热启动 / A3 定向 destroy / B 系算法改造已生效，A2（GCN 驱动容错模式/副本）需重训后才启用**。
 **尚未做**：重建数据集（带 mode 标签）→ 重训 → tight 重跑主对比/消融出报告级结果。
+</details>
 
 ## 本轮要解决的两个问题（用户诉求）
 1. **GCN 作用太小**：旧实现 GCN 只在 `insert_scores` 里给"主节点"重排序，结构上只能降成本（消融 w/o GCN 可行率几乎不变、成本仅 -4.5%）。

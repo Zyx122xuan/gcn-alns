@@ -30,13 +30,16 @@ def main() -> None:
     ap.add_argument("--algorithms", nargs="*", default=BUDGET_ALGORITHMS)
     ap.add_argument("--repeats", type=int, default=None)
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--model-path", dest="model_path", default=None,
+                    help="GCN model checkpoint (default: cfg gcn.model_path)")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     for n in args.budgets:
         run_experiment(args.instances, args.out, cfg,
                        algorithms=args.algorithms, repeats=args.repeats,
-                       tag=f"budget_{n}", max_iter=n, workers=args.workers)
+                       tag=f"budget_{n}", max_iter=n, workers=args.workers,
+                       model_path=args.model_path)
 
 
 if __name__ == "__main__":

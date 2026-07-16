@@ -22,12 +22,18 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--max-iter", dest="max_iter", type=int, default=None)
     ap.add_argument("--tag", default="main")
+    ap.add_argument("--model-path", dest="model_path", default=None,
+                    help="GCN model checkpoint (default: cfg gcn.model_path)")
+    ap.add_argument("--algo-suffix", dest="algo_suffix", default="",
+                    help="suffix appended to algorithm labels (e.g. ' (A2-on)')")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     run_experiment(args.instances, args.out, cfg,
                    algorithms=args.algorithms or list(DEFAULT_ALGORITHMS),
                    repeats=args.repeats, tag=args.tag,
+                   model_path=args.model_path,
+                   algo_label_suffix=args.algo_suffix,
                    workers=args.workers, max_iter=args.max_iter)
 
 

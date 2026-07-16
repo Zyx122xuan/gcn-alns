@@ -25,13 +25,14 @@ _NUMERIC = [
     "avg_recovery", "safety_margin", "n_faults", "active_backup_ratio",
     "cost_total", "cost_compute", "cost_backup", "cost_comm", "cost_reserve",
     "cost_recovery", "runtime", "verify_time", "gcn_infer_time",
-    "convergence_iter", "prune_ratio",
+    "convergence_iter", "first_feasible_iter", "prune_ratio",
 ]
 
 # Recovery metrics only meaningful on SLA-feasible solutions: infeasible runs
 # carry huge / INF R_max that drag the plain mean negative (issue #4). These get
 # an extra ``*_feas_*`` aggregation restricted to feasible, finite-valued runs.
-_FEASIBLE_ONLY = ["safety_margin", "r_max", "avg_recovery", "c_worst", "cost_total"]
+_FEASIBLE_ONLY = ["safety_margin", "r_max", "avg_recovery", "c_worst",
+                  "cost_total", "first_feasible_iter"]
 
 
 def load_runs(raw_dir: str | Path) -> pd.DataFrame:

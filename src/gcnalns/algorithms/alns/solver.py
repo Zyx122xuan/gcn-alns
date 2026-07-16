@@ -45,6 +45,10 @@ class ALNS(Scheduler):
         self.w_pen = a["recovery_penalty_weight"]
         self.w_dead = a["deadline_penalty_weight"]
         self.ablation = ablation or {}
+        # B2 restart diversification can be ablated off (falls back to plain
+        # break-on-stagnation).
+        if not self.ablation.get("restarts", True):
+            self.restarts = 0
         self.rng = np.random.default_rng(cfg.get("seeds.alns", 2026) + seed)
         self._gcn_score = None  # set by GCN-ALNS subclass
 
@@ -75,8 +79,9 @@ class ALNS(Scheduler):
     def _search_objective(self, obj, viol, cost, have_feasible):
         """Feasibility-first (B1): before any feasible incumbent is found,
         minimise the violation V (cost only breaks ties); once feasible, switch
-        to the cost + penalty objective."""
-        if have_feasible:
+        to the cost + penalty objective. Ablating ``feasibility_first`` off
+        always optimises the cost + penalty objective (plain-ALNS behaviour)."""
+        if have_feasible or not self.ablation.get("feasibility_first", True):
             return obj
         return viol + 1e-4 * cost
 
@@ -99,11 +104,12 @@ class ALNS(Scheduler):
         hybrid plus a makespan-minimising HEFT-fastest solution (B3), which
         helps deadline-bound (tight) scenarios."""
         inits = [CriticalityHybrid(self.cfg).schedule(instance)]
-        try:
-            from ..heft import HEFT
-            inits.append(HEFT(self.cfg).schedule(instance))
-        except Exception:
-            pass
+        if self.ablation.get("init_diversify", True):
+            try:
+                from ..heft import HEFT
+                inits.append(HEFT(self.cfg).schedule(instance))
+            except Exception:
+                pass
         return inits
 
     def _initial_solution(self, instance, factory, gcn_score, gcn_mode):
@@ -161,11 +167,13 @@ class ALNS(Scheduler):
 
         best_feasible = None
         best_feasible_cost = math.inf
+        first_feas_iter = -1  # iteration at which feasibility was first reached
         # confirm the initial solution if it looks feasible
         if est_feas:
             res0, cost0 = self._full_eval(instance, cur, factory)
             if res0.feasible:
                 best_feasible, best_feasible_cost = cur.clone(), cost0
+                first_feas_iter = 0
 
         # GCN-guided destroy is only offered when a score hook + switch are on
         # (keeps plain ALNS behaviour identical for backward compatibility).
@@ -240,6 +248,8 @@ class ALNS(Scheduler):
                     best_feasible = cand.clone()
                     best_feasible_cost = cost_exact
                     conv_iter = it
+                    if first_feas_iter < 0:
+                        first_feas_iter = it
 
             dscore[d_name] += outcome
             rscore[r_name] += outcome
@@ -270,12 +280,15 @@ class ALNS(Scheduler):
                             best_feasible = cur.clone()
                             best_feasible_cost = ce
                             conv_iter = it
+                            if first_feas_iter < 0:
+                                first_feas_iter = it
                 else:
                     break
 
         out = best_feasible if best_feasible is not None else best
         self.runtime = time.perf_counter() - t0
         self.convergence_iter = conv_iter
+        self.first_feasible_iter = first_feas_iter
         self.prune_ratio = total_prune / total_eval if total_eval else 0.0
         out.meta["found_feasible"] = best_feasible is not None
         return out
