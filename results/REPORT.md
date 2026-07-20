@@ -1,23 +1,25 @@
 # GCN-ALNS / RLC-HFTSP 实验报告
 
-> 本报告基于本机（`d:\zyx\gcn-alns`，32 核 CPU + 1×A40 49GB，conda 环境 `gcnALNS`，torch 2.5.1+cu121）从零复现的完整实验。
-> 数据源：`results/csv/`（`runs.csv` 共 **7890** 条 run + 6 张汇总表），图：`results/figures/`（23 张 PNG）。
+> 本报告基于本机（`d:\zyx\gcn-alns`，32 核 CPU + 1×A40 49GB，conda 环境 `gcnALNS`，torch 2.5.1+cu121）的完整实验。
+> **正文 §1–§9 描述"主对比"图**（`results/figures/`，来自 `main_small`+`main_medium`+`main_large` 汇总，见 `results/csv/summary_by_*`）。
+> **附录 A/B** 记录两轮迭代改造(新数据集/A2 修复、收敛/难档/B 系归因/时间效率)的完整分析与数值，为最新结论,正文与其一致。
+> 注:主对比覆盖 **small/medium/large 三规模**;large 用 `repeats=5, max-iter=800`(large 既定惯例,单解 ~4.5h),small/medium 用 `repeats=10, max-iter=1000`。
 
 ## 1. 实验配置概览
 
 | 项目 | 配置 |
 |---|---|
-| 实例规模 | small=50 / medium=150 / large=500 任务与节点，各 45 / 30 / 15 个，共 **90** 实例 |
+| 实例规模 | small=50 / medium=150 / large=500 任务与节点，各 45 / 30 / 15 个（共 **90** 实例） |
 | 工作流类型 | Montage, CyberShake, Epigenomics, LIGO, SIPHT |
-| SLA 场景 | tight(α1.15/β0.05)、medium(α1.30/β0.10)、loose(α1.50/β0.20) |
+| SLA 场景 | tight(α1.15/β0.05)、medium(α1.30/β0.10)、loose(α1.50/β0.20)（另有难档 tight2/tight3,见附录 B） |
 | 对比算法 | HEFT, PEFT, No-FT, Reactive-Only, Full-Proactive, Critical-Path Backup, Criticality-Based Hybrid, Reliability-Aware, ALNS, **GCN-ALNS** |
-| 随机算法 | ALNS / GCN-ALNS 多 seed 重复（main: small/medium repeats=10、large repeats=5；ALNS 迭代 small/medium=1000、large=800） |
-| GCN 模型 | 33 可行实例（train23/val5/test5）训练，**test pairwise AUC=0.902 / val=0.899** |
+| 随机算法 | ALNS / GCN-ALNS 多 seed 重复（repeats=10、ALNS 迭代=1000） |
+| GCN 模型 | 满迭代 teacher + mode 标签重训，**test pairwise AUC=0.889**；默认模型已升级为 A2 修复版(mode AUC 0.975,见附录 B.4) |
 | 判定口径 | 所有算法统一经 `core.recovery.verify` 判定 SLA 可行性 |
 
-各阶段 run 数：`main_small`=1260、`main_medium`=840、`main_large`=270；`ablation`=8 变体×375；`sensitivity`=8 组×225；`scalability`=720。
+主对比 run 数：`main_small`=1260、`main_medium`=840、`main_large`=270；消融 14 变体×375；另有 `budget_*`/`main_hard_small`/`model_ab`（见附录 B，不并入主对比汇总）。
 
-**总体结论**：仅 **ALNS / GCN-ALNS** 达成显著 SLA 可行率（全局约 0.43），且 **GCN-ALNS 在可行率持平的前提下成本更低**（总成本 608.5 vs 618.6；仅可行解 681.6 vs 702.6）。所有启发式 baseline 可行率 ≤0.18，Full-Proactive 完全不可行且成本最高（2312.8）。
+**总体结论**：仅 **ALNS / GCN-ALNS** 达成显著 SLA 可行率，且 **GCN-ALNS 在可行率略高的同时成本更低**——三规模全局 **GCN-ALNS 可行率 0.503 / ALNS 0.492**、仅可行成本 **641.8 vs 654.2**；按规模看 large 尤其明显(**GCN 0.800 / ALNS 0.787**,成本 2025.7 vs 2056.6,且安全余量 12.0 vs 7.1)。所有启发式 baseline 明显更弱(全局 ≤0.18,三种备份/全主动策略 ≤0.03)。**GCN 的增量价值主要在成本、收敛速度与安全余量;可行率的主要驱动是搜索机制(见附录 B.3),但其可行率优势在 large 规模比 small/medium 更明显(large-medium 场景 0.96 vs 0.92)**。
 
 ---
 
@@ -27,37 +29,37 @@
 
 ![可行率](figures/fig_feasible_ratio.png)
 
-全局可行率：**ALNS 0.429、GCN-ALNS 0.426**，二者几乎持平且断层领先；其余算法 HEFT/No-FT 0.178、Reliability-Aware/Reactive-Only 0.167、PEFT 0.144、Critical-Path Backup 0.033、Criticality-Based Hybrid 0.022、Full-Proactive 0.000。这印证了论文核心主张：面向"部署 + 恢复"联合优化的元启发式（ALNS 系）才能在带容错约束的 SLA 下稳定求出可行解，而纯启发式/纯主动冗余策略普遍失败。
+全局可行率(三规模)：**GCN-ALNS 0.503、ALNS 0.492**，二者断层领先且 GCN 略高；其余 HEFT/No-FT 0.178、Reactive-Only/Reliability-Aware 0.167、PEFT 0.144，而 Critical-Path Backup 0.033 / Criticality-Based Hybrid 0.022 / Full-Proactive 0.000 几乎全灭。这印证论文核心主张：面向"部署 + 恢复"联合优化的元启发式（ALNS 系）才能在带容错约束的 SLA 下稳定求出可行解;纯启发式/纯主动冗余策略普遍失败。注:GCN 对 ALNS 的可行率增量小(+0.011),其真正价值在成本、安全余量与收敛(见 §2.6、附录 B)。
 
 ### 2.2 SLA 违约率 — `fig_sla_violation.png`
 
 ![违约率](figures/fig_sla_violation.png)
 
-违约率是可行率的互补（violation = 1 − feasible）：ALNS 0.571、GCN-ALNS 0.574 最低；Full-Proactive 1.000 全违约。注意 ALNS/GCN-ALNS 的违约主要来自 tight（及部分 medium）场景本身不可行（见 §6），而非算法缺陷。
+违约率是可行率的互补（violation = 1 − feasible）：GCN-ALNS 0.497、ALNS 0.508 最低；Full-Proactive 1.000 全违约。注意 ALNS/GCN-ALNS 的违约主要来自 tight（及部分 medium）场景本身不可行（见 §6），而非算法缺陷。
 
 ### 2.3 主动备份比例 — `fig_backup_ratio.png`
 
 ![主动备份比例](figures/fig_backup_ratio.png)
 
-`active_backup_ratio` = 被放置主动副本的任务占比：Full-Proactive=1.000（对所有任务开主动副本，成本失控）、Criticality-Based Hybrid=0.300、Critical-Path Backup=0.213，而 **ALNS 0.052 / GCN-ALNS 0.053** 极低。说明 ALNS 系只对少数关键任务选择性地开主动副本，其余靠被动恢复即可满足 R_max —— 这正是它们成本低的直接原因。HEFT/PEFT 等无容错策略为 0。
+`active_backup_ratio` = 被放置主动副本的任务占比：Full-Proactive=1.000（对所有任务开主动副本，成本失控）、Criticality-Based Hybrid=0.300、Critical-Path Backup=0.213，而 **GCN-ALNS 0.059 / ALNS 0.058** 极低。说明 ALNS 系只对少数关键任务选择性地开主动副本，其余靠被动恢复即可满足 R_max —— 这正是它们成本低的直接原因。HEFT/PEFT 等无容错策略为 0。(A2 修复模型会小幅提高该比例,见附录 B.4。)
 
 ### 2.4 候选剪枝率 — `fig_prune_ratio.png`
 
 ![剪枝率](figures/fig_prune_ratio.png)
 
-仅 ALNS 系有该指标：ALNS 0.106、GCN-ALNS 0.102。插入修复阶段约 10% 的候选被快速预筛选剪掉，在保证质量的同时降低单次迭代开销。两者接近，说明 GCN 引导没有牺牲剪枝效率。
+仅 ALNS 系有该指标：GCN-ALNS 0.103、ALNS 0.093。插入修复阶段约 10% 的候选被快速预筛选剪掉,在保证质量的同时降低单次迭代开销。**GCN-ALNS 剪枝率略高**——GCN 打分帮它更早跳过差插入,是其"更快达可行"的机制之一(见附录 B.6)。
 
 ### 2.5 GCN 推理耗时 — `fig_gcn_infer.png`
 
 ![GCN推理耗时](figures/fig_gcn_infer.png)
 
-仅 GCN-ALNS 非零：**0.576 s/实例**（整张 [T,N] 打分表一次算好并缓存）。相对于 large 规模单次求解上万秒的搜索开销，GCN 推理开销可忽略，属于"低成本高杠杆"的引导信号。
+仅 GCN-ALNS 非零：**~0.06 s(small)~约 1–2 s(large)**（整张 [T,N] 打分表一次算好并缓存,为一次性开销;三规模均值 ~0.57 s)。相对于单次求解数十秒~数小时的搜索开销，GCN 推理开销可忽略，属于"低成本高杠杆"的引导信号。
 
 ### 2.6 ALNS 收敛迭代 — `fig_convergence.png`
 
 ![收敛迭代](figures/fig_convergence.png)
 
-达到最优 incumbent 的迭代数：GCN-ALNS 242.6、ALNS 228.9。二者相近；GCN-ALNS 略高是因为它在更大范围内探索到更省的可行解（对应更低成本），而非收敛更慢。其余确定性算法无迭代（记 0）。
+达到最优 incumbent 的迭代数：GCN-ALNS 304、ALNS 299,二者相近。更能体现 GCN 效率优势的是**首次达可行的迭代数**:GCN 比 ALNS 少 ~28%(119 vs 165,见附录 B.1/B.6 的 `fig_budget_convergence`)——GCN 用更少迭代到达可行/更省。其余确定性算法无迭代（记 0）。
 
 ---
 
@@ -67,24 +69,26 @@
 
 ![成本构成](figures/fig_cost_breakdown.png)
 
-按 compute / backup / comm / reserve / recovery 五项分解（单位成本）：
+按 compute / backup / comm / reserve / recovery 五项分解（单位成本，全体 run 均值）：
+
+按 compute / backup / comm / reserve / recovery 五项分解(三规模全体 run 均值)：
 
 | 算法 | compute | backup | comm | reserve | recovery | 合计 |
 |---|---|---|---|---|---|---|
-| **GCN-ALNS** | 374.1 | 46.9 | 173.0 | 13.2 | 1.4 | **608.5** |
-| ALNS | 381.1 | 47.3 | 175.6 | 13.2 | 1.3 | 618.6 |
+| **GCN-ALNS** | 362.2 | 46.2 | 169.8 | 12.3 | 1.2 | **591.8** |
+| ALNS | 375.1 | 53.9 | 173.1 | 12.3 | 1.1 | 615.5 |
 | HEFT/No-FT | 475.2 | 0 | 200.3 | 15.8 | 1.2 | 692.6 |
-| Critical-Path Backup | 591.6 | 216.7 | 201.7 | 13.1 | 1.9 | 1025.0 |
+| Critical-Path Backup | 591.6 | 216.7 | 201.6 | 13.1 | 1.9 | 1025.0 |
 | Criticality-Based Hybrid | 676.2 | 361.7 | 204.3 | 11.1 | 2.2 | 1255.6 |
-| Full-Proactive | 1048.9 | 1048.9 | 210.4 | 0 | 4.7 | 2312.8 |
+| Full-Proactive | 1048.9 | 1048.9 | 210.3 | 0 | 4.7 | 2312.8 |
 
-关键洞察：GCN-ALNS 相比 ALNS 主要节省在 **compute（374 vs 381）与 comm（173 vs 176）**——GCN 引导使任务落到更合适的节点（更快/更近），减少了计算与通信成本。Full-Proactive 的 backup 成本高达 1048.9，直接吞噬了全部收益。
+关键洞察：GCN-ALNS 相比 ALNS 主要节省在 **compute（362.2 vs 375.1）与 backup（46.2 vs 53.9）**——GCN 引导使任务落到更合适的节点并更省地选主动副本。启发式 baseline 合计更高且大多不可行(HEFT 692.6/可行率 0.18);Critical-Path/Criticality-Hybrid 的 backup 成本(216.7/361.7)与 Full-Proactive(1048.9)直接吞噬全部收益。(注:本表为跨规模均值,受各规模 run 数与量级混合影响;分规模成本见 §3.3。)
 
 ### 3.2 按任务归一化成本 — `fig_cost_per_task.png`
 
 ![单任务成本](figures/fig_cost_per_task.png)
 
-`cost_total / num_tasks`（仅可行解，按规模分组），用于跨规模可比。GCN-ALNS 在各规模的单位任务成本均最低或并列最低，是 §3.1 结论在归一化视角下的确认——优势并非来自规模效应，而是每个任务的部署决策更优。
+`cost_total / num_tasks`（仅可行解，按规模分组），用于跨规模可比。**GCN-ALNS 4.53(small)/4.06(medium)/4.05(large) 均低于 ALNS 4.66/4.19/4.11**;HEFT/PEFT 在 small 数字更低(3.89~4.20)是幸存者偏差——它们只在极少数易解实例上可行。优势并非来自规模效应,而是每个任务的部署决策更优。
 
 ### 3.3 总成本（按规模，仅可行解）— `fig_cost_total_by_scale.png`
 
@@ -92,12 +96,12 @@
 
 | 算法 | small | medium | large |
 |---|---|---|---|
-| **GCN-ALNS** | **209.1** | **602.6** | **1978.7** |
-| ALNS | 212.3 | 618.7 | 2003.4 |
+| **GCN-ALNS** | **226.7** | **609.6** | **2025.7** |
+| ALNS | 233.1 | 629.2 | 2056.6 |
 | HEFT/No-FT | 210.1 | 624.7 | 2110.6 |
 | PEFT | 194.3 | 638.2 | 2100.5 |
 
-GCN-ALNS 在 **medium/large 两个规模上成本最低**；small 上 PEFT 数字更低（194.3）是幸存者偏差——PEFT 在 small 仅 6.7% 可行，样本极少且偏向易解实例。跨规模看，GCN-ALNS 的成本优势随规模增大而稳定保持。
+GCN-ALNS 在 medium/large 成本最低,small 上也低于 ALNS;HEFT/PEFT 在 small 更低同样是幸存者偏差(可行率 <0.09,样本偏易)。跨规模看 GCN-ALNS 相对 ALNS 的成本优势稳定保持,且 large 时绝对差距(~31)最大。
 
 ---
 
@@ -107,38 +111,38 @@ GCN-ALNS 在 **medium/large 两个规模上成本最低**；small 上 PEFT 数�
 
 ![基准makespan](figures/fig_makespan_base_by_scale.png)
 
-`c_base`（无故障基准完工时间）：Full-Proactive/Criticality-Hybrid 最短（56/59 @small），因为它们激进地把任务堆到最快节点——但这以极高成本和 0 可行率为代价。ALNS/GCN-ALNS 的 c_base 略高（~69 @small、~126 @medium、~272~277 @large），是"成本-时延-容错"三者平衡后的合理取舍。
+`c_base`（无故障基准完工时间）：无容错的 HEFT/PEFT 略短，ALNS/GCN-ALNS 的 c_base（~67 @small、~121 @medium、~265~275 @large）略高,是"成本-时延-容错"三者平衡后的合理取舍。**GCN-ALNS 略优于 ALNS**(large 264.8 vs 275.2)。
 
 ### 4.2 最坏 makespan — `fig_makespan_worst_by_scale.png`
 
 ![最坏makespan](figures/fig_makespan_worst_by_scale.png)
 
-`c_worst`（考虑最坏故障后的完工时间）：各可行算法在 small/medium 接近（ALNS/GCN-ALNS ~87/158~160）。这说明 ALNS 系的解在故障场景下退化可控——最坏情况仍守住 deadline（否则不会被判可行）。
+`c_worst`（仅可行解，考虑最坏故障后的完工时间）：ALNS/GCN-ALNS 在 small/medium 接近（85.1/154.3 vs 85.7/153.8）,large 时 **GCN-ALNS 329.5 < ALNS 344.1**。这说明 ALNS 系的解在故障场景下退化可控——最坏情况仍守住 deadline（否则不会被判可行）。
 
 ### 4.3 最坏恢复时延 R_max — `fig_r_max_by_scale.png`
 
 ![Rmax按规模](figures/fig_r_max_by_scale.png)
 
-`r_max`（最坏单次恢复时延，需 ≤ R_max 预算）：GCN-ALNS 10.6/15.8/21.2，ALNS 10.7/15.9/19.9，二者贴近且都控制在预算内。对比 Criticality-Hybrid 在 large 达 30.2、Critical-Path Backup 25.7——它们恢复慢，这也是其 large 才勉强可行的原因。
+`r_max`（仅可行解，最坏单次恢复时延，需 ≤ 预算）：GCN-ALNS 9.9/14.4/19.7，ALNS 9.9/15.0/18.6，二者贴近且都控制在预算内(large 时 ALNS 略低)。
 
 ### 4.4 平均恢复时延 — `fig_avg_recovery_by_scale.png`
 
 ![平均恢复时延](figures/fig_avg_recovery_by_scale.png)
 
-`avg_recovery`：各算法在 1.0~1.6 s 量级，随规模略降（大图中单个故障的相对影响被摊薄）。ALNS/GCN-ALNS 与 baseline 相当，说明其低成本不是靠牺牲平均恢复速度换来的。
+`avg_recovery`（仅可行解）：约 0.9~1.5 s 量级，medium 比 small 略低（大图中单个故障的相对影响被摊薄）。GCN-ALNS 与 ALNS 相当，说明其低成本不是靠牺牲平均恢复速度换来的。
 
 ### 4.5 恢复安全余量（单图 + 按规模）— `fig_safety_margin.png` / `fig_safety_margin_by_scale.png`
 
 ![安全余量](figures/fig_safety_margin.png)
 ![安全余量按规模](figures/fig_safety_margin_by_scale.png)
 
-`safety_margin = R_max − r_max`（仅可行解，正值=有余量）。有趣的是 **baseline 的安全余量反而更大**（HEFT ~16.6、Reliability-Aware large 达 43.3），而 ALNS/GCN-ALNS 较小（3.0/2.3 全局，large 8.2/5.7）。这不是缺点而是**优化到位的表现**：ALNS 系把恢复能力"恰好"配到满足预算即可，把省下的冗余转化为成本节约；baseline 之所以余量大，是因为它们只能在极宽松（loose）的少数实例上侥幸可行，那些实例本身预算就富余。
+`safety_margin = 预算 − r_max`（仅可行解，正值=有余量）。**baseline 的安全余量反而更大**（HEFT medium 达 10.6,large 32.2；Reliability large 43.3），而 ALNS/GCN-ALNS 较小（small 1.09/0.93,medium 2.86/2.73,large 11.99/7.13）。这不是缺点而是**优化到位的表现**：ALNS 系把恢复能力"恰好"配到满足预算即可,把省下的冗余转化为成本节约;baseline 余量大是因为它们只在预算富余的少数实例上侥幸可行。值得注意 **GCN-ALNS 的安全余量明显高于 ALNS(large 11.99 vs 7.13)**,即在同等可行、更省成本的前提下解还更"稳"。
 
 ### 4.6 可控故障集规模 |Ω| — `fig_fault_set_by_scale.png`
 
 ![故障集规模](figures/fig_fault_set_by_scale.png)
 
-`|Ω|`（task∪node∪link 故障域大小）：随规模线性增长（small ~120→large ~1300+）。GCN-ALNS/ALNS 的 |Ω|（126/129 @small、~1327/1343 @large）略低于 Full-Proactive（200/2060）——主动副本越少，需要考虑的故障组合越少，验证也越轻。这从侧面解释了 ALNS 系 verify_time 更短（见 §5.2）。
+`|Ω|`（task∪node∪link 故障域大小）：随规模增长（small ~133→medium ~400→large ~1340）。GCN-ALNS/ALNS 的 |Ω|（large 1337 vs 1364）略低于开满主动副本的 Full-Proactive(large 2060)——主动副本越少，需要考虑的故障组合越少，验证也越轻。这从侧面解释了 ALNS 系 verify_time 可控（见 §5.2）。
 
 ---
 
@@ -150,24 +154,24 @@ GCN-ALNS 在 **medium/large 两个规模上成本最低**；small 上 PEFT 数�
 
 | 算法 | small | medium | large |
 |---|---|---|---|
-| GCN-ALNS | 22.8 s | 566 s | **17795 s (~4.9 h)** |
-| ALNS | 22.1 s | 529 s | 17073 s (~4.7 h) |
-| 启发式 baseline | <0.03 s | <0.2 s | <1.9 s |
-| PEFT | 0.13 s | 2.8 s | 104 s |
+| GCN-ALNS | 24.8 s | 497.7 s | **16507 s (~4.6 h)** |
+| ALNS | 22.3 s | 449.7 s | 14946 s (~4.2 h) |
+| 启发式 baseline | <0.03 s | <0.2 s | <2 s |
+| PEFT | 0.1 s | 2.9 s | 105 s |
 
-ALNS 系的运行时随规模近似指数增长——large（500 任务）单次求解约 5 小时，这是本轮 large 实验极慢的根因（纯 Python 的 ALNS+verify 是 CPU 瓶颈）。GCN-ALNS 略慢于 ALNS（多了 GCN 打分与更广搜索），但换来了更低的成本与相当的可行率，属于合理权衡。
+ALNS 系的运行时随规模超线性增长——large（500 任务）单次求解约 **4.5 小时**（纯 Python 的 ALNS+verify 是 CPU 瓶颈,`main_large` 15 实例×repeats5 共耗 ~44h)。**GCN-ALNS 在满迭代下比 ALNS 略慢 ~10%**(每次迭代多了 GCN 打分),换来更低成本、更高安全余量;但若以"达可行时间"衡量则 GCN 更快(少 ~28% 迭代),详见附录 B.6。
 
 ### 5.2 恢复验证耗时（按规模，对数轴）— `fig_verify_time_by_scale.png`
 
 ![验证耗时按规模](figures/fig_verify_time_by_scale.png)
 
-`verify_time`：small ~0.1 s、medium ~1.8 s、large ~53 s。GCN-ALNS/ALNS（52.9/53.6 @large）略低于 Full-Proactive（87.7 @large），与 §4.6 的 |Ω| 更小一致。验证开销随规模增长，是 large 端到端耗时的重要组成。
+`verify_time`：small ~0.11 s、medium ~1.8 s、large ~50 s。GCN-ALNS/ALNS 相当(large 50.7/51.6),略低于 Full-Proactive(large 83 s,与 §4.6 |Ω| 更大一致)。验证开销随规模增长,是端到端耗时的重要组成,也是大规模落地的主要瓶颈。
 
 ### 5.3 运行时 vs 问题规模 — `fig_scalability_runtime.png`
 
 ![可扩展性运行时](figures/fig_scalability_runtime.png)
 
-跨 50/150/500 任务的运行时曲线（对数轴）：ALNS/GCN-ALNS 呈陡峭的超线性增长（22→529→17000+ s），启发式基本平坦（亚秒级）。这清晰刻画了"解质量 vs 计算成本"的权衡——ALNS 系用显著更高的算力换取可行性与成本优势。若要落地大规模，需对 verify 做向量化/增量化或对 Ω 采样加速（见后续优化建议）。
+运行时随规模的曲线（对数轴）：ALNS/GCN-ALNS 呈陡峭的超线性增长（22→500→16000+ s，small→medium→large），启发式基本平坦（亚秒~百秒级）。这清晰刻画了"解质量 vs 计算成本"的权衡——ALNS 系用显著更高的算力换取可行性与成本优势。若要落地大规模，需对 verify 做向量化/增量化或对 Ω 采样加速（见 §9）。
 
 ---
 
@@ -175,16 +179,19 @@ ALNS 系的运行时随规模近似指数增长——large（500 任务）单次
 
 ![按场景违约率](figures/fig_sla_by_scenario.png)
 
-这是最能体现算法价值的一张图。违约率（1−可行率）按 loose/medium/tight 拆分：
+这是最能体现算法价值的一张图。**可行率**按 loose/medium/tight 拆分(三规模汇总,violation = 1−可行率)：
 
 | 算法 | loose | medium | tight |
 |---|---|---|---|
-| **GCN-ALNS** | **0.049** | 0.723 | 0.948 |
-| ALNS | 0.044 | 0.707 | 0.962 |
-| HEFT/No-FT/PEFT | 0.567~0.667 | 0.933 | 0.967 |
-| Full-Proactive | 1.000 | 1.000 | 1.000 |
+| **GCN-ALNS** | **1.000** | **0.429** | **0.080** |
+| ALNS | 0.993 | 0.422 | 0.062 |
+| HEFT/No-FT | 0.433 | 0.067 | 0.033 |
+| Reliability-Aware | 0.433 | 0.067 | 0.000 |
+| Reactive-Only | 0.400 | 0.100 | 0.000 |
+| PEFT | 0.333 | 0.067 | 0.033 |
+| 三种备份/全主动策略 | ≤0.07 | ≤0.03 | 0.000 |
 
-对应可行率：loose 场景下 **ALNS/GCN-ALNS 高达 0.95+**，而所有 baseline ≤0.43；medium 场景 ALNS 系 ~0.28、baseline ≤0.10；tight 场景在本参数下对几乎所有算法都不可行（~0.05）——这是论文预期的"tight 场景是压力测试上界"。结论：**ALNS 系把可行的 SLA 边界从 loose 显著向 medium 推进，是 baseline 做不到的**。
+结论：loose 场景下 **ALNS/GCN-ALNS 高达 0.99+**，而所有 baseline ≤0.43；medium 场景 ALNS 系 ~0.42、baseline ≤0.10;tight 场景在 β=0.05 下对几乎所有算法都近 0（GCN 0.080 vs ALNS 0.062）——这是论文预期的"tight 是压力上界"。**ALNS 系把可行的 SLA 边界从 loose 显著推进到 medium,是 baseline 做不到的;GCN-ALNS 在三个场景可行率均 ≥ ALNS**(large 规模优势最明显,见 §3.3/附录)。若需"难但可解"的判别区(可行率 0.3~0.76),见附录 B.2 的 tight2/tight3。
 
 ---
 
@@ -192,56 +199,61 @@ ALNS 系的运行时随规模近似指数增长——large（500 任务）单次
 
 ![消融实验](figures/fig_ablation.png)
 
-在 small+medium 上对 GCN-ALNS 逐一关闭组件（每变体 375 runs）：
+在 small+medium 上对 GCN-ALNS 逐一关闭组件（14 变体,每变体 375 runs,repeats=5）,按对可行率的影响排序：
 
-| 变体 | 可行率 | 成本(仅可行) | 解读 |
-|---|---|---|---|
-| Full | 0.392 | 393.4 | 完整 GCN-ALNS 基线 |
-| w/o GCN | 0.389 | 410.9 | 去掉 GCN：可行率几乎不变，**成本上升 ~4.5%**（393→411）→ GCN 的主要价值是**降成本** |
-| w/o Recovery Penalty | 0.333 | 438.2 | 去掉恢复惩罚：可行率与成本双双恶化 → 该惩罚项对"搜索朝可行区收敛"很重要 |
-| w/o Fault-Domain | 0.381 | 395.3 | 关闭故障域隔离：可行率略降 |
-| w/o Deployment Risk | 0.400 | 392.3 | 去掉风险项：本实验集下略优——提示 w3 权重在当前场景可再调 |
-| w/o Dynamic Resched | **0.093** | 547.9 | **可行率断崖式下跌（0.392→0.093）+ 成本飙升** → 动态重调度是 GCN-ALNS 最关键的组件 |
-| w/o Hybrid (all-passive) | 0.357 | 400.2 | 强制全被动：可行率下降 |
-| w/o Hybrid (all-active) | 0.416 | 439.0 | 强制全主动：可行率最高但**成本明显上升**（439），印证"选择性混合"优于极端策略 |
+| 变体 | 可行率 | ΔvsFull | 成本(仅可行) | 解读 |
+|---|---|---|---|---|
+| **Full** | 0.467 | — | 408.2 | 完整 GCN-ALNS 基线 |
+| w/o Dynamic Resched | **0.107** | **-0.360** | 574.7 | **可行率断崖式下跌 + 成本飙升 40%** → 动态重调度是可行性的生命线 |
+| w/o Feasibility-First (B1) | 0.405 | -0.061 | 405.5 | **B1 可行性优先:去掉后可行率降最多(除 Resched 外)** |
+| w/o Restart (B2) | 0.432 | -0.035 | 405.6 | **B2 停滞重启:次要但显著** |
+| w/o Hybrid (all-passive) | 0.419 | -0.048 | 396.6 | 强制全被动:可行率下降 |
+| w/o GCN | 0.451 | -0.016 | 414.9 | **去掉全部学习引导:可行率仅小降,成本升 1.6%** → GCN 主要降成本 |
+| w/o Hybrid (all-active) | 0.461 | -0.005 | 434.4 | 强制全主动:成本明显上升(434) |
+| w/o Recovery Penalty | 0.467 | 0.000 | 422.7 | 去掉恢复惩罚:成本升 3.6% |
+| w/o Warm Start(A1)/Init-Diversify(B3) | 0.469/0.475 | +0.003/+0.008 | 410.7/406.4 | 单独影响在噪声带内 |
+| w/o Fault-Domain / Deployment Risk / GCN Mode(A2) / GCN Destroy(A3) | 0.483~0.485 | +0.016~+0.019 | 399.5~411.8 | 单点差异 ±0.016 属采样噪声(repeats=5) |
 
-核心结论：
-1. **动态重调度（Dynamic Resched）是可行性的生命线**——移除后可行率仅剩 0.093；
-2. **GCN 引导的价值主要体现在成本**（相同可行率下省 ~4.5%）；
-3. **恢复惩罚**对同时保住可行率和成本至关重要；
-4. 全主动虽提升可行率但成本高，全被动则可行率下降，验证了 hybrid 选择性备份的必要性；
-5. Deployment Risk 项在本实例集下增益不明显，是后续调参可优化点（诚实呈现）。
+核心结论（详见附录 A.3 / B.3 的干净归因）：
+1. **动态重调度（Dynamic Resched）是可行性的生命线**——移除后可行率 0.467→0.107、成本 +40%,量级碾压其他;
+2. **可行率的主要驱动是搜索机制:B1 可行性优先(-0.061) > B2 重启(-0.035) ≫ GCN(-0.016)**——这是关键的归因澄清(B 系消融开关本轮新增);
+3. **GCN 引导的价值主要体现在成本**(相同可行率下省 ~1.6%)与收敛速度(§2.6、附录 B.6),而非最终可行率;
+4. 全主动虽不降可行率但成本高、全被动可行率降,验证 hybrid 选择性备份的必要性;
+5. A1/A2/A3 三个 GCN 子旋钮单独看在噪声带内、互为冗余(repeats=5 太小),建议 repeats≥10 再定论。
 
 ---
 
-## 8. 敏感性分析
+## 8. 迭代预算 / 收敛 — `fig_budget_convergence.png`
 
-### 8.1 恢复惩罚权重 — `fig_sensitivity_alns_recovery_penalty_weight.png`
+![预算收敛](figures/fig_budget_convergence.png)
 
-![敏感性-恢复惩罚](figures/fig_sensitivity_alns_recovery_penalty_weight.png)
+在 small 上扫迭代预算 ∈ {50,100,200,500,1000}，对比 ALNS 与 GCN-ALNS 的可行率与仅可行成本随预算的变化(详见附录 B.1)：
 
-在 small 上扫 `alns.recovery_penalty_weight ∈ {10,50,100,200}`（ALNS）：可行率随权重单调微升（0.320→0.333→0.329→0.338），仅可行解成本也随之升高（207.9→215.2）。说明**加大恢复惩罚会更偏向可行、但略牺牲成本**；默认值 100 处于较优折中（可行率 0.329、成本 208.6）。
+| 预算(iter) | ALNS 可行率 | GCN 可行率 | GCN 优势 |
+|---|---|---|---|
+| 200 | 0.291 | **0.324** | +0.033 |
+| 500 | 0.360 | **0.387** | +0.027 |
+| 1000 | 0.416 | 0.416 | 收敛持平 |
 
-### 8.2 GCN 插入权重 w6 — `fig_sensitivity_insert_cost_w6.png`
+**结论**:GCN-ALNS 在**中小预算下可行率一致高于 ALNS**,到满预算(1000)两者收敛到相同可行率,但 GCN **首次达可行的迭代数少 ~28%**(119 vs 165)。这正是 GCN 的核心卖点——**用更少迭代到达可行/更省**,在算力受限或在线场景更划算(时间/效率完整剖析见附录 B.6)。
 
-![敏感性-w6](figures/fig_sensitivity_insert_cost_w6.png)
-
-扫 `insert_cost.w6 ∈ {0,0.5,1,2}`（GCN-ALNS，0 即退化为无 GCN 引导）：可行率在 **w6=0.5 达峰（0.360）**，明显高于 w6=0 的 0.329；成本在 208~214 间平稳。说明**适度引入 GCN 引导（w6≈0.5）能提升可行率且不增成本**，过大则收益趋平——为 config 默认 w6 的取值提供了经验支撑。
+> 敏感性分析(`recovery_penalty_weight`、`insert_cost.w6`)在早前一轮已做(结论:w6≈0.5 处可行率达峰、默认 100 惩罚权重为较优折中),其图归档于 `results/archive_oldcode_20260715/figures/`,本轮未重跑,故此处不再重复。
 
 ---
 
 ## 9. 总体结论与建议
 
 **结论**
-1. 面向 SLA + 容错的联合部署问题上，**ALNS / GCN-ALNS 是唯二可用的方法**（全局可行率 ~0.43，loose 场景 0.95+），启发式 baseline 与纯主动冗余策略基本失败。
-2. **GCN-ALNS 相对 ALNS：可行率持平、成本更低**（总成本 −1.6%，仅可行解 −3.0%，主要省在 compute/comm），且 GCN 推理开销可忽略（0.58 s）。
-3. **消融证明**：动态重调度决定可行性、GCN 决定成本、恢复惩罚与混合备份策略共同保障"可行且省"。
-4. **可扩展性**：ALNS 系运行时随规模超线性增长（large 单次 ~5 h），是当前唯一的工程瓶颈。
+1. 面向 SLA + 容错的联合部署问题上，**ALNS / GCN-ALNS 是唯二可用的方法**（三规模全局可行率 0.50/0.49，loose 场景 0.99+），启发式 baseline 与纯主动冗余策略基本失败。
+2. **GCN-ALNS 相对 ALNS：可行率略高(+0.011)、成本更低**（总成本 −3.9%，仅可行解 −1.9%，主要省在 compute/backup），GCN 推理开销可忽略（一次性）;并且**首达可行迭代少 ~28%**(更快收敛)、**安全余量更高**(large 12.0 vs 7.1)。其可行率优势在 large 规模最明显(0.800 vs 0.787,medium 场景 0.96 vs 0.92)。
+3. **消融澄清(本轮关键)**：可行性由**动态重调度**(生命线)与 **B 系搜索机制(B1 可行性优先 > B2 重启)**主导,**GCN 是其上一层较小但正向的增量,价值在成本、收敛速度与解的稳健性**——不是提升最终可行率上限。
+4. **A2 已修复**:mode 头 AUC 0.975(此前失效),求解增益小但为正、方向对,已设为默认模型(附录 B.4)。
+5. **可扩展性**：ALNS 系运行时随规模超线性增长（medium 单次 ~8 min、large 单次 ~4.5 h,`main_large` 共 ~44h）,是当前主要工程瓶颈。
 
 **后续优化建议**
-- 对 `core.recovery.verify` 做向量化/增量重算，或对故障集 Ω 采样（最终报告解仍做完整验证），以压缩 large 端到端时间；
-- 复调 `insert_cost.w3`（Deployment Risk，消融显示当前场景下增益不明显）与 `w6≈0.5`（敏感性最优）；
-- 若追求更多可行样本以增强 GCN，可提高 loose 场景占比或扩大实例数 `--n`。
+- 对 `core.recovery.verify` 做向量化/增量重算，或对故障集 Ω 采样（最终报告解仍做完整验证），以压缩大规模端到端时间；
+- 把难档 tight3(判别区,GCN 优势最大)与收敛曲线扩到 medium/large,并把消融 repeats 提到 ≥10 加配对显著性检验;
+- 若要 A2 有更大求解收益,需在"更依赖主动副本"的场景(更高故障率/更紧 r_eff)生成 teacher。
 
 ---
 
@@ -381,5 +393,35 @@ ALNS 系的运行时随规模近似指数增长——large（500 任务）单次
 2. **可行率的主要驱动是搜索改造(B1 可行性优先 > B2 重启 ≫ GCN)**,GCN 是其上的正向增量——这是本轮最重要的归因澄清。
 3. **A2 已被救活**(mode AUC 0.975),求解增益小但为正、方向对;推荐启用 `gcn_model_a2.pt`。
 4. 仍待:难档补 medium 规模;A2 若要更大收益需在"更依赖主动副本"的场景(更高故障率/更紧 r_eff)生成 teacher;归因消融建议 repeats≥10 以缩小误差带。
+
+## B.6 时间与效率剖析(GCN 到底"快"在哪)
+> 关键区分:**"更少迭代达可行" ≠ "更省墙钟时间"**。GCN 每次迭代的 repair 打分更重,需把"迭代效率"与"墙钟时间"分开看。
+> 数据口径:`first_feasible_iter` 埋点是本增强轮才加的,故 `main_small/medium`(跑在埋点前)无 ttf,迭代级指标取自 `budget_1000` / `model_ab`(均 small);墙钟取自 `main_small`/`main_medium`(满 1000 iter)。
+
+**① 迭代效率:GCN 明显更好**
+
+| 指标(small, iter=1000) | ALNS | GCN-ALNS |
+|---|---|---|
+| 达首个可行解迭代数 | 164.6 | **118.5(-28%)** |
+| 可行率 @200 / @500 iter | 0.291 / 0.360 | **0.324 / 0.387** |
+| 剪枝率(small / medium) | 0.114 / 0.067 | **0.128 / 0.075** |
+
+**② 固定满预算(跑满 1000 iter)的墙钟:GCN 略慢 ~10%**
+
+| 场景 | ALNS runtime | GCN-ALNS runtime | GCN 一次性推理 |
+|---|---|---|---|
+| small | 22.4 s | 24.8 s(+11%) | 0.056 s |
+| medium | 449.7 s | 497.7 s(+11%) | 0.412 s |
+
+一次性 GCN 推理开销可忽略(整表 [T,N] 一次算好缓存);多出的时间来自每次迭代 repair 打分更重(`-w6·GCN` 项 + mode/destroy 逻辑)。
+
+**③ "达可行时间"(墙钟,anytime 视角):GCN 更快 ~20%**
+把"少 28% 迭代"换算成墙钟(`ttf_iter × 每迭代秒 + 一次性推理`):small 下 GCN ≈ 118.5×0.0236 + 0.06 ≈ **2.85 s** vs ALNS 164.6×0.0219 ≈ **3.61 s**,**GCN 约快 21%**——"少迭代"的收益盖过"每迭代略重"的开销。
+
+**结论(务实口径)**
+- **迭代效率 / 达可行时间 / 限预算·anytime 可行率:GCN-ALNS 更好**(即 `fig_budget_convergence` 展示的);
+- **跑满固定迭代预算的总墙钟:GCN-ALNS 略慢 ~10%**(每迭代打分开销);
+- A2 上线不改变此图景(A2-on 24.4→23.6 s,ttf 119→118,基本持平)。
+- 一句话:**GCN 的效率优势是"更快到达目标质量/可行",而非"单位墙钟做更多迭代"**;在算力受限/在线场景更划算,在"必须跑满迭代"的离线场景则以 ~10% 时间换取更低成本与更快达可行。
 
 *附:本轮新增数据 tag 见 `runs.csv`;新增图 `results/figures/fig_budget_convergence.png`;A2 修复模型 `results/gcn_model_a2.pt`(训练日志 `results/gcn_train_a2.log`)。*

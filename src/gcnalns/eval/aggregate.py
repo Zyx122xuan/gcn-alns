@@ -34,6 +34,13 @@ _NUMERIC = [
 _FEASIBLE_ONLY = ["safety_margin", "r_max", "avg_recovery", "c_worst",
                   "cost_total", "first_feasible_iter"]
 
+# The by-algorithm/scale/scenario summary CSVs describe the *main comparison*
+# only. Other studies (budget sweep, hard-tier, model A/B, ablation, ...) reuse
+# the plain ALNS / GCN-ALNS labels or add suffixes and would otherwise pollute
+# these summaries; they are analysed separately from ``runs.csv`` via their own
+# tags. ``runs.csv`` itself always keeps every run.
+_MAIN_TAGS = {"main", "main_small", "main_medium", "main_large"}
+
 
 def load_runs(raw_dir: str | Path) -> pd.DataFrame:
     """Load and concatenate all raw run records under ``raw_dir``."""
@@ -57,14 +64,17 @@ def summarize(df: pd.DataFrame, group_keys: list[str]) -> pd.DataFrame:
     summary.columns = [f"{m}_{stat}" for m, stat in summary.columns]
     summary = summary.reset_index()
 
-    # feasible-only aggregation for recovery / cost metrics (issue #4)
+    # feasible-only aggregation for recovery / cost metrics (issue #4).
+    # Non-finite values (e.g. INF r_max) are turned into NaN and skipped
+    # *per column* rather than dropping whole rows, so a column that is simply
+    # missing for some runs (e.g. first_feasible_iter on pre-instrumentation
+    # runs) does not wipe out the other feasible-only metrics.
     if "feasible" in df.columns:
         feas = df[df["feasible"].astype(bool)].copy()
         fcols = [c for c in _FEASIBLE_ONLY if c in feas.columns]
         if fcols and not feas.empty:
-            finite = np.isfinite(feas[fcols].apply(pd.to_numeric, errors="coerce")).all(axis=1)
-            feas = feas[finite]
-        if fcols and not feas.empty:
+            feas[fcols] = (feas[fcols].apply(pd.to_numeric, errors="coerce")
+                           .replace([np.inf, -np.inf], np.nan))
             fg = feas.groupby(group_keys, dropna=False)[fcols].agg(["mean", "std", "count"])
             fg.columns = [f"{m}_feas_{stat}" for m, stat in fg.columns]
             summary = summary.merge(fg.reset_index(), on=group_keys, how="left")
@@ -81,6 +91,15 @@ def aggregate(raw_dir: str | Path, out_dir: str | Path) -> dict[str, Path]:
     df.to_csv(runs_path, index=False)
     written["runs"] = runs_path
 
+    # Summaries describe the main comparison only (see _MAIN_TAGS note). Fall
+    # back to the full frame if there is no tag column / no main-tagged runs.
+    if "tag" in df.columns:
+        main_df = df[df["tag"].isin(_MAIN_TAGS)]
+        if main_df.empty:
+            main_df = df
+    else:
+        main_df = df
+
     specs = {
         "summary_by_algorithm": ["algorithm"],
         "summary_by_algo_scenario": ["algorithm", "sla_scenario"],
@@ -89,8 +108,8 @@ def aggregate(raw_dir: str | Path, out_dir: str | Path) -> dict[str, Path]:
         "summary_by_algo_scale_scenario": ["algorithm", "scale", "sla_scenario"],
     }
     for name, keys in specs.items():
-        if all(k in df.columns for k in keys) and not df.empty:
-            s = summarize(df, keys)
+        if all(k in main_df.columns for k in keys) and not main_df.empty:
+            s = summarize(main_df, keys)
             p = out_dir / f"{name}.csv"
             s.to_csv(p, index=False)
             written[name] = p

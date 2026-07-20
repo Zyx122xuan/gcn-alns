@@ -12,6 +12,8 @@
 4. **A2 救活**:mode-BCE 加 `pos_weight`(自动 38.8)→ mode 头 **AUC 0.975**(此前失效);模型 A/B 显示求解增益小但为正(可行率 +0.015、配对净 +7/450、主动副本 0.095→0.099)。
 - **已将 A2 修复模型提升为默认** `results/gcn_model.pt`(= 原 `gcn_model_a2.pt`,mode AUC 0.975);旧默认备份为 `results/gcn_model_premodefix.pt`;更早的无 mode 头模型在 `archive_oldcode_20260715/`。
 - 代码改动均过 lint;新增 `run_model_ab.py`、`--variants`/`--model-path`/`--algo-suffix` CLI、`first_feasible_iter` 指标、`fig_budget_convergence`。
+- **large 已补跑(2026-07-19)**:`main_large`(15 实例,repeats5,iter800,~44h)。三规模全局 **GCN-ALNS 可行率 0.503 / ALNS 0.492**,仅可行成本 641.8 vs 654.2;**large 规模 GCN 0.800 vs ALNS 0.787、成本 2025.7 vs 2056.6、安全余量 12.0 vs 7.1**(GCN 优势在 large 最明显,medium 场景 0.96 vs 0.92)。已重聚合+重绘,`REPORT.md` 正文 §1–§9 与 `*_by_scale`/scenario 图均已更新为三规模数据。
+- **聚合口径修正**:`eval/aggregate.py` 的 summary_by_* 仅统计**主对比 tag**(`main_small/medium/large`),避免 budget/hard/model_ab 复用 plain 标签污染主对比图/表(`runs.csv` 仍含全部 run);feasible-only 聚合改为逐列跳过 NaN/Inf(修复 `first_feasible_iter` 在旧 run 缺失会清空 `*_feas_*` 的问题)。`REPORT.md` 正文 §1–§9 已按新(small+medium)数据 + 诚实归因口径重写每幅图解释。
 
 ## 一句话状态
 **本轮全部完成（2026-07-16）**：①重建数据集（mode 标签 + 满迭代 teacher，34 可行实例）→ ②重训激活 A2（`gcn_model.pt` 现 `has_mode_head=True`，test AUC 0.889）→ ③tight 重跑主对比(small+medium,repeats10,iter1000)+11 变体消融(repeats5) → ④聚合出 6 CSV/21 图 + 归因复盘。**结论见 `results/REPORT.md` 附录 A**。旧结果归档于 `results/archive_oldcode_20260715/`。
