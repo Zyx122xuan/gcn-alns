@@ -31,11 +31,12 @@ from ..eval.metrics import evaluate
 from ..utils.io import _NpEncoder, save_json
 
 # Algorithms whose output depends on the random seed -> repeated.
-STOCHASTIC = {"ALNS", "GCN-ALNS"}
+STOCHASTIC = {"ALNS", "GCN-ALNS", "GA-Placement", "RA-MOMA"}
 
 DEFAULT_ALGORITHMS = [
     "HEFT", "PEFT", "No-FT", "Reactive-Only", "Full-Proactive",
     "Critical-Path Backup", "Criticality-Based Hybrid", "Reliability-Aware",
+    "RECR-D", "HFWPF", "GA-Placement", "RA-MOMA",
     "ALNS", "GCN-ALNS",
 ]
 

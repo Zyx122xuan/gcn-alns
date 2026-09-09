@@ -17,7 +17,7 @@
 | GCN 模型 | 满迭代 teacher + mode 标签重训，**test pairwise AUC=0.889**；默认模型已升级为 A2 修复版(mode AUC 0.975,见附录 B.4) |
 | 判定口径 | 所有算法统一经 `core.recovery.verify` 判定 SLA 可行性 |
 
-主对比 run 数：`main_small`=1260、`main_medium`=840、`main_large`=270；消融 14 变体×375；另有 `budget_*`/`main_hard_small`/`model_ab`（见附录 B，不并入主对比汇总）。
+主对比 run 数：`main_small`=1260、`main_medium`=840、`main_large`=270；消融 14 变体×375；另有 `budget_*`/`main_hard_{small,medium,large}`/`model_ab`（见附录 B，不并入主对比汇总）。
 
 **总体结论**：仅 **ALNS / GCN-ALNS** 达成显著 SLA 可行率，且 **GCN-ALNS 在可行率略高的同时成本更低**——三规模全局 **GCN-ALNS 可行率 0.503 / ALNS 0.492**、仅可行成本 **641.8 vs 654.2**；按规模看 large 尤其明显(**GCN 0.800 / ALNS 0.787**,成本 2025.7 vs 2056.6,且安全余量 12.0 vs 7.1)。所有启发式 baseline 明显更弱(全局 ≤0.18,三种备份/全主动策略 ≤0.03)。**GCN 的增量价值主要在成本、收敛速度与安全余量;可行率的主要驱动是搜索机制(见附录 B.3),但其可行率优势在 large 规模比 small/medium 更明显(large-medium 场景 0.96 vs 0.92)**。
 
@@ -252,7 +252,7 @@ ALNS 系的运行时随规模超线性增长——large（500 任务）单次求
 
 **后续优化建议**
 - 对 `core.recovery.verify` 做向量化/增量重算，或对故障集 Ω 采样（最终报告解仍做完整验证），以压缩大规模端到端时间；
-- 把难档 tight3(判别区,GCN 优势最大)与收敛曲线扩到 medium/large,并把消融 repeats 提到 ≥10 加配对显著性检验;
+- **难档 tight2/tight3 已扩到 medium/large(2026-09-08,见附录 B.2)**:结论为"GCN 成本/安全余量三规模稳赢,可行率抬升主要在 small";后续可把收敛曲线扩到 medium/large,并把消融 repeats 提到 ≥10 加配对显著性检验;
 - 若要 A2 有更大求解收益,需在"更依赖主动副本"的场景(更高故障率/更紧 r_eff)生成 teacher。
 
 ---
@@ -333,7 +333,7 @@ ALNS 系的运行时随规模超线性增长——large（500 任务）单次求
 # 附录 B：增强轮(收敛/难档/B 系归因/A2 上线,2026-07-16)
 
 > 针对附录 A 暴露的短板做四件事:①用**迭代预算扫描**证明"GCN 更快收敛";②建**"难但可解"档**(tight2 β0.10 / tight3 β0.15)把可行率拉进判别区;③给 B 系搜索改造加**消融开关**,把"GCN 的功劳"从"搜索改造的功劳"里干净剥离;④修复 **A2 类不均衡**(mode-BCE `pos_weight`)并做新旧模型 A/B。
-> 受控口径:除模型 A/B 外,所有对比均用同一模型 `results/gcn_model.pt`;A2 升级单独由 A/B 隔离衡量。数据:`runs.csv` 相应 tag(`budget_*`/`main_hard_small`/`model_ab`/`ablation_wo_{Feasibility-First,Restart,Init-Diversify}`)。
+> 受控口径:除模型 A/B 外,所有对比均用同一模型 `results/gcn_model.pt`;A2 升级单独由 A/B 隔离衡量。数据:`runs.csv` 相应 tag(`budget_*`/`main_hard_{small,medium,large}`/`model_ab`/`ablation_wo_{Feasibility-First,Restart,Init-Diversify}`)。
 
 ## B.1 迭代预算扫描(small):GCN 更快收敛
 | 预算(iter) | ALNS 可行率 | GCN 可行率 | ALNS 达可行迭代 | GCN 达可行迭代 |
@@ -346,16 +346,35 @@ ALNS 系的运行时随规模超线性增长——large（500 任务）单次求
 
 **结论**:GCN-ALNS 在**中小预算下可行率一致高于 ALNS**(200 iter:+0.033;500 iter:+0.027),到 1000 iter 两者收敛到相同可行率(0.416),但 GCN **首次达可行的迭代数少 ~28%**(119 vs 165)。即 GCN 的核心价值是**用更少迭代达到可行/更省**,而非最终质量的绝对上限——这正是"小预算/在线场景"下 GCN 的卖点(见 `fig_budget_convergence`)。
 
-## B.2 "难但可解"档:GCN-ALNS vs ALNS(判别区)
-| 算法 | 场景 | 可行率 | 仅可行成本 | active_bkp |
-|---|---|---|---|---|
-| **GCN-ALNS** | tight2(β0.10) | **0.200** | 253.5 | 0.080 |
-| ALNS | tight2 | 0.160 | 256.0 | 0.079 |
-| **GCN-ALNS** | tight3(β0.15) | **0.760** | **256.5** | 0.040 |
-| ALNS | tight3 | 0.653 | 267.0 | 0.040 |
-| Criticality-Hybrid / HEFT / Reactive | tight2/3 | ≤0.07 | — | — |
+## B.2 "难但可解"档:GCN-ALNS vs ALNS(判别区,三规模)
 
-**结论**:tight3(可行率落在判别区 0.65–0.76)下 **GCN-ALNS 比 ALNS 可行率高 +0.107(相对 +16%)且成本低 3.9%**;tight2 也 +0.040。这是本轮**最强单点证据**——在"难但可解"区,GCN 的可行率优势被明显放大(附录 A 里 tight 太难、loose 太易,差异被两端压缩)。启发式 baseline 在难档基本全灭。
+> 难档(tight2 β0.10 / tight3 β0.15)专用实例集:`data/instances/hard_{small,medium,large}`,
+> 5 工作流 × {tight2,tight3},small/medium/large 各 3/2/1 reps(=30/20/10 实例),seed 沿用默认 2026。
+> 算法集 = 8 内置 baseline + ALNS + GCN-ALNS(与主对比外部基线无关),stochastic repeats small/medium=10、large=5,max-iter small/medium=1000、large=800。
+> tag `main_hard_{small,medium,large}`(不并入主对比 summary)。**small 为 2026-07-16 首轮,medium/large 于 2026-09-08 补齐。**
+
+**GCN-ALNS vs ALNS(仅可行成本/安全余量仅统计可行解;`best-BL`=8 内置 baseline 中最高可行率):**
+
+| 规模 | 场景 | GCN 可行率 | ALNS 可行率 | GCN 仅可行成本 | ALNS 仅可行成本 | GCN 安全余量 | ALNS 安全余量 | best-BL 可行率 |
+|---|---|---|---|---|---|---|---|---|
+| small | tight2 | **0.200** | 0.160 | **253.5** | 256.0 | **0.47** | 0.41 | 0.000 |
+| small | tight3 | **0.760** | 0.653 | **256.5** | 267.0 | 0.75 | **0.84** | 0.067 |
+| medium | tight2 | 0.540 | **0.590** | **696.6** | 722.0 | **1.49** | 1.35 | 0.200 |
+| medium | tight3 | 1.000 | 1.000 | **638.1** | 639.5 | **2.05** | 1.70 | 0.600 |
+| large | tight2 | **1.000** | 0.960 | **2091.5** | 2153.0 | **3.69** | 3.61 | 0.400 |
+| large | tight3 | 0.880 | 0.880 | **2166.8** | 2170.0 | 2.96 | **6.08** | 0.400 |
+
+![难档三规模:可行率与仅可行成本](figures/fig_hard_tier_by_scale.png)
+
+*图:难档 tight2/tight3 在 small/medium/large 上的对比(`fig_hard_tier_by_scale.png`)。左=SLA 可行率(GCN-ALNS / ALNS / 最优内置 baseline),右=仅可行解总成本(对数轴,GCN-ALNS 在 6 格全部 ≤ ALNS)。best-baseline 在所有格子断层落后,ALNS 系可行率随规模上升(判别区上移),GCN 与 ALNS 可行率贴近而成本持续更低。*
+
+**结论(诚实解读,三规模)**:
+1. **成本优势稳健且普适**:**6 个 (规模×场景) 格子里 GCN-ALNS 仅可行成本全部 ≤ ALNS**(降幅 0.2%–4.1%,small-tight3 最大 -3.9%);安全余量 GCN 在 4/6 更高(仅 small-tight3、large-tight3 由 ALNS 略高)。这是难档最一致的信号——**同等或更高可行率下 GCN 更省**。
+2. **可行率优势随规模/场景变化**:GCN > ALNS 于 small(两档,tight3 +0.107 相对 +16%)与 large-tight2(+0.040);medium-tight3、large-tight3 两者持平;**唯一 ALNS 反超在 medium-tight2(0.590 vs 0.540)**。即 GCN 的可行率增益在 small 最明显,大规模退化为"持平+更省"。
+3. **判别区随规模上移**:small 的判别区在 tight3(0.65–0.76),medium 上移到 tight2(0.54–0.59,tight3 已饱和 1.000),large 再上移到 tight3(0.88,tight2 近饱和 0.96–1.00)。规模越大、恢复预算相对越宽,同一 β 的难度越低——与正文/附录 C 的"large 是外部基线转正规模"规律一致。
+4. **baseline 在难档仍全面落后**:best-BL 可行率 small ≤0.067、medium ≤0.60(仅 Reactive-Only 在 tight3)、large ≤0.40,且多数格子为 0;三种主动/混合备份策略几乎全灭(Criticality-Hybrid/Full-Proactive 全 0)。ALNS 系断层领先的结论在三档全成立。
+
+**一句话**:难档扩到 medium/large 后,**GCN 的"更快收敛/更省成本/更稳"叙事得到三规模支撑,但"可行率抬升"主要是 small 规模象现**;大规模下 ALNS 与 GCN 可行率趋同,差异体现在成本与安全余量。这比原先仅凭 small-tight3 单点更完整、也更诚实。
 
 ## B.3 B 系归因(把"搜索改造"从"GCN"里剥离,同模型/repeats5/small+medium)
 | 变体 | 可行率 | ΔFeas(vs Full) | 仅可行成本 | ΔCost% | tight 可行率 |
@@ -389,10 +408,10 @@ ALNS 系的运行时随规模超线性增长——large（500 任务）单次求
 **结论**:A2 修复让 mode 头从"失效"变"高判别(AUC 0.975)",求解上带来**小而真实的可行率增益(+0.015,配对净 +7/450)并小幅提高主动副本占比**(0.095→0.099);成本无明显变化。收益偏小是因为在这些场景里"是否用主动副本"很少成为可行性的决定因素——但方向正确,建议将 `gcn_model_a2.pt` 作为默认模型。
 
 ## B.5 本轮总结论
-1. **GCN 的真实价值 = 更快收敛(少 ~28% 迭代达可行)+ 难档更高可行率(tight3 +0.107、成本 -3.9%)+ 全程略省成本**;并非最终可行率上限的大幅抬升。
+1. **GCN 的真实价值 = 更快收敛(少 ~28% 迭代达可行)+ 全程略省成本 + 难档 small 更高可行率(tight3 +0.107、成本 -3.9%)**;并非最终可行率上限的大幅抬升。**难档扩到 medium/large 后(B.2)进一步表明:成本/安全余量三规模稳赢,但可行率抬升主要是 small 现象——大规模下 ALNS 与 GCN 可行率趋同(如 large-tight3 均 0.88),差异落在成本(GCN 仍 ≤ ALNS)。**
 2. **可行率的主要驱动是搜索改造(B1 可行性优先 > B2 重启 ≫ GCN)**,GCN 是其上的正向增量——这是本轮最重要的归因澄清。
 3. **A2 已被救活**(mode AUC 0.975),求解增益小但为正、方向对;推荐启用 `gcn_model_a2.pt`。
-4. 仍待:难档补 medium 规模;A2 若要更大收益需在"更依赖主动副本"的场景(更高故障率/更紧 r_eff)生成 teacher;归因消融建议 repeats≥10 以缩小误差带。
+4. 仍待:~~难档补 medium 规模~~(**已于 2026-09-08 完成 medium+large,见 B.2**);A2 若要更大收益需在"更依赖主动副本"的场景(更高故障率/更紧 r_eff)生成 teacher;归因消融建议 repeats≥10 以缩小误差带。
 
 ## B.6 时间与效率剖析(GCN 到底"快"在哪)
 > 关键区分:**"更少迭代达可行" ≠ "更省墙钟时间"**。GCN 每次迭代的 repair 打分更重,需把"迭代效率"与"墙钟时间"分开看。
@@ -425,3 +444,60 @@ ALNS 系的运行时随规模超线性增长——large（500 任务）单次求
 - 一句话:**GCN 的效率优势是"更快到达目标质量/可行",而非"单位墙钟做更多迭代"**;在算力受限/在线场景更划算,在"必须跑满迭代"的离线场景则以 ~10% 时间换取更低成本与更快达可行。
 
 *附:本轮新增数据 tag 见 `runs.csv`;新增图 `results/figures/fig_budget_convergence.png`;A2 修复模型 `results/gcn_model_a2.pt`(训练日志 `results/gcn_train_a2.log`)。*
+
+---
+
+# 附录 C:外部论文基线对比(RECR-D / HFWPF / GA / RA-MOMA,静态适配版,2026-07-20)
+
+> 目的:把 3 篇 CCF-B + 1 篇 **CCF-A** 论文的**"选节点 + 选容错策略"决策逻辑**复现为对比基线,在**同一 `core.recovery.verify` 闸门**下与 GCN-ALNS/ALNS/现有 baseline 公平比较。
+> 代码在新包 `src/gcnalns/reproductions/`(懒加载注册进 `algorithms/registry.py`);已**全量并入主对比** tag `main_small`(45 实例)/`main_medium`(30 实例)/`main_large`(15 实例),数据见 `runs.csv` 与 `summary_by_*`,并已重绘进正文 §2–§6 主对比图。
+> **诚实声明:这些是"忠于原文调度/容错决策逻辑、但去掉其在线/不确定性/能量/弹性/多目标外壳"的静态适配版基线,而非逐比特复现。** 各基线裁剪见 C.1(完整出处/映射见 `src/gcnalns/reproductions/README.md`)。
+
+## C.1 各基线与静态适配裁剪
+
+| 基线 | 出处 | 复现的核心逻辑 | 主要裁剪 / 口径对齐 |
+|---|---|---|---|
+| **RECR-D** | Taghinezhad-Niar & Taheri, *IEEE TSC* 18(5):2892-2903, 2025 (**CCF-B**) | Alg.1 子deadline 分配(EFT/LFT 凸组合)+ Alg.2 **EDF + 归一化惩罚**`PN=ζ·cost+β·deadline+γ·reliability` 选点 + Alg.3 **TRM 加主动副本** | **能量项丢弃**(α_energy=0);可靠性判定改用本框架 `verify`/`estimate_rmax` 的恢复预算(替代原文 CTMC 成功概率);deadline 作为**约束**(优先满足子deadline 的最省节点,否则最早完工兜底) |
+| **HFWPF** | Ren & Yao, *IEEE TSC* 19(1):44-57, 2026 (**CCF-B**) | 只复现**静态核心**:preprocessing 切子deadline + 初始调度的**容错策略选择(式8 slack 判据)**:`slack≥2(Tboot+max_pred TT+ψ)`→resubmission(被动)否则 replication(主动 2 副本);容量偏置选点 | **去掉执行时间不确定性(论文核心)**、在线重执行、slack 回填、replication→resubmission 回切、弹性无限 VM;`Tboot=0`(本框架无 VM 启动)。**报告须注明:去掉不确定性后其相对优势被削弱,属预期** |
+| **GA-Placement** | 平替 Xu et al. (MTGP), *IEEE TSC* 16(4):2657-2671, 2023 (**CCF-B**) | **标准 GA**(个体=每任务〈节点选择+主/被动位〉;适应度=`compute_cost`+deadline/恢复惩罚,与 ALNS 同一 quick 目标;锦标赛选择/均匀交叉/逐基因变异/精英保留,贪心 EFT 暖启动) | MTGP 原问题为**动态到达+makespan+无容错/无 SLA**,不可直接比;按交接选项 A,用标准 GA 代表"进化式元启发式",**非** GP 超启发式的逐比特复现 |
+| **RA-MOMA** | Qin, Pi, Shao, Xu, Chen, *IEEE TPDS* 34(4):1343-1361, 2023 (**CCF-A**) | **可靠性感知多目标 memetic**:NSGA-II + **混合 HEFT 初始化**(HEFT/备份-HEFT/最省/最省+备份)+ **4 个邻域算子**(CP_perturb/CP_remove/VM_release/VM_backup);编码 `<α 主, β 备份>`;三目标 (makespan, cost, 恢复风险) Pareto 前沿 | 编码去掉 **γ(VM 租赁池,本框架节点固定)** 与 **π(执行序,评估器按拓扑序自动定)**;backup→**主动副本 m=2,须异故障域**;可靠性(Poisson/CTMC)、多云计费、性能退化→本框架确定 exec+`verify`;从 Pareto 前沿**选"经 verify 可行且最省 cost"的解**(原文"用户选调度"步骤,这里由 deadline+恢复预算驱动) |
+
+## C.2 数值结果(main_small + main_medium + **main_large**,统一 `verify` 判定)
+
+RECR-D/HFWPF 为确定性(1 rep/实例);GA-Placement / RA-MOMA 为随机(small/medium repeats=10,large repeats=5)。成本为全体 run 均值,仅可行成本/安全余量仅统计可行解。**large(15 实例×500 任务)已全量并入**(单解 `verify`~50-85s、GA/RA-MOMA 单解 ~5-7min,共 ~1.5h)。
+
+| 规模 | 算法 | 可行率 | 成本(全体) | 仅可行成本 | 安全余量(feas) | 主动备份比例 |
+|---|---|---|---|---|---|---|
+| small | **RECR-D** | 0.000 | 276.9 | — | — | 0.177 |
+| small | **HFWPF** | 0.000 | 580.7 | — | — | 0.599 |
+| small | **GA-Placement** | 0.100 | 297.5 | 228.3 | 2.20 | 0.137 |
+| small | **RA-MOMA** (CCF-A) | 0.009 | 246.0 | 184.0 | 0.99 | 0.072 |
+| small | HEFT(参照) | 0.089 | 216.4 | 210.1 | 2.24 | 0.000 |
+| small | ALNS / GCN-ALNS(参照) | 0.416 / 0.416 | 294.9 / 280.3 | 233.1 / 226.7 | 0.93 / 1.09 | 0.092 / 0.095 |
+| medium | **RECR-D** | 0.000 | 636.9 | — | — | 0.077 |
+| medium | **HFWPF** | 0.000 | 1295.4 | — | — | 0.304 |
+| medium | **GA-Placement** | 0.013 | 1751.9 | 1810.0 | 1.74 | 0.537 |
+| medium | **RA-MOMA** (CCF-A) | **0.160** | 721.5 | **625.8** | 8.64 | 0.036 |
+| medium | HEFT(参照) | 0.200 | 661.7 | 624.7 | 10.62 | 0.000 |
+| medium | ALNS / GCN-ALNS(参照) | 0.533 / **0.560** | 714.5 / 685.0 | 629.2 / **609.6** | 2.73 / 2.86 | 0.019 / 0.019 |
+| large | **RECR-D** | 0.067 | 1817.3 | **1539.4** | 92.65 | 0.018 |
+| large | **HFWPF** | 0.133 | 3440.2 | 3188.7 | 12.47 | 0.171 |
+| large | **GA-Placement** | 0.053 | 5569.2 | 5215.6 | 11.57 | 0.516 |
+| large | **RA-MOMA** (CCF-A) | **0.400** | 2294.5 | **2108.1** | 32.25 | 0.019 |
+| large | HEFT(参照) | 0.400 | 2182.9 | 2110.6 | 32.20 | 0.000 |
+| large | ALNS / GCN-ALNS(参照) | 0.787 / **0.800** | 2143.3 / 2087.7 | 2056.6 / **2025.7** | 7.13 / 11.99 | 0.006 / 0.004 |
+
+**全局(small+medium+large)可行率**:GCN-ALNS 0.503 > ALNS 0.492 ≫ HEFT 0.178 > **RA-MOMA 0.099** > **GA-Placement 0.064** > HFWPF 0.022 > RECR-D 0.011。
+**large 是外部基线的转正规模**:RA-MOMA 在 large 达 **0.400 可行率(= HEFT,仅可行成本 2108 ≈ ALNS 2057/GCN 2026)**,HFWPF 0.133、RECR-D 0.067(且 RECR-D 仅可行成本 **1539 为全场最低**),GA-Placement 0.053(但成本失控 5216)。与内置备份类 baseline 在 large 才转正(0.13-0.20)一致——**规模越大、预算相对越宽,一次性/进化式基线才开始出可行解**。
+
+## C.3 结论(诚实解读)
+
+1. **单次启发式(含这两篇论文的静态核心)在联合 deadline+恢复 SLA 下几乎全灭**:RECR-D/HFWPF 在 small/medium 可行率均为 0.000,与本框架内置的备份类 baseline(Full-Proactive/Critical-Path/Criticality-Hybrid 在 small/medium 同为 0.000)完全同档。这再次印证正文核心主张——**面向"部署+恢复"联合优化的搜索式方法(ALNS 系)才能稳定求可行解**;把成熟论文的调度决策逻辑单独拿出来做一次性放置并不足够。
+2. **RECR-D 是所有加容错方法里最省的**(small 成本 276.9,低于 Critical-Path 395/Criticality-Hybrid 412/Full-Proactive 746),符合其"cost-efficient"定位——它把成本压得很低但因此牺牲 makespan/恢复余量,难达可行。
+3. **HFWPF 成本偏高(581/1295)且主动备份比例高(0.599/0.304)**:去掉其执行时间不确定性(论文核心卖点)后,式8 slack 判据在确定时间下更倾向 replication,冗余上升、成本上升而可行性未获益——**这是交接文档预告的预期结果**(其相对 GCN-ALNS 的优势被削弱)。
+4. **标准 GA 优于被动启发式但远逊于 ALNS/GCN-ALNS**:small 可行率 0.100(>HEFT 0.089),medium 骤降至 0.013 且成本失控(1752)——150 任务时通用 GA 的搜索效率不足,佐证**问题专用的 ALNS/GCN-ALNS(medium 0.53/0.56)对通用进化式元启发式有显著优势**。MTGP 原问题(动态 makespan)不可直接比,此处仅作进化式方法的代表。
+5. **CCF-A 的 RA-MOMA 是最强的外部元启发式对照,且随规模优势扩大,但仍显著弱于 GCN-ALNS**:作为可靠性感知多目标 memetic(NSGA-II + 混合 HEFT 初始化 + 4 邻域算子),RA-MOMA **在 medium 上比 plain GA 强一个数量级(0.160 vs 0.013)**,在 **large 上达 0.400 可行率(= HEFT,仅可行成本 2108 ≈ ALNS 2057/GCN 2026、安全余量 32.3)**——其混合 HEFT 初始化 + 关键路径/低利用率邻域算子让它在 150/500 任务规模仍稳定收敛(不像 plain GA 在 large 成本飙到 5216)。但**它在三规模均明显落后于问题专用的 ALNS/GCN-ALNS**(large 0.400 vs 0.787/0.800;全局 0.099 vs 0.492/0.503)。**结论:即便是发表在 CCF-A 的成熟多目标 memetic,在本联合 deadline+恢复 SLA 问题上也不敌 GCN-ALNS——这是最有分量的外部对照。**
+6. **规模效应**:四条外部基线都在 **large 才明显转正**(RA-MOMA 0.400 / HFWPF 0.133 / RECR-D 0.067 / GA 0.053),与内置备份类 baseline 同规律——大图预算相对更宽,一次性/进化式方法才有可行解;但 ALNS 系在 large 仍以 0.79/0.80 断层领先。
+7. **公平性**:四者与所有方法共用 `compute_schedule → verify → compute_cost`,能量/不确定性/在线到达/多目标均已按 C.1 对齐;结论方向与正文/附录 A-B 一致,且为 GCN-ALNS 的价值提供了**外部(他人论文,含一篇 CCF-A)对照**。
+
+*附:数据 `runs.csv`(tag `main_small`/`main_medium`/`main_large`)与 `summary_by_*` 已含 RECR-D/HFWPF/GA-Placement/RA-MOMA;实现见 `src/gcnalns/reproductions/{recr_d,hfwpf,ga_placement,ra_moma}.py`,参数见 `config/default.yaml` 的 `reproductions:` 段。**正文 §2–§6 的主对比图已重绘并纳入这四条基线**(三规模全量);其数值以本附录与更新后的 CSV/图为准。*

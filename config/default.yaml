@@ -176,3 +176,49 @@ baselines:
   hybrid_criticality_quantile: 0.70   # tasks above this h_i quantile get backup
   critical_path_slack_frac: 0.05      # slack <= frac * makespan => on critical path
   reliability_high_crit_quantile: 0.70
+
+# ---- External paper-reproduction baselines (see src/gcnalns/reproductions) ---
+# Static, fault-tolerant-scheduling adaptations of 3 CCF-B papers, all evaluated
+# under the SAME core.recovery.verify gate. Parameters here only; see the package
+# README for the cropping/adaptation notes.
+reproductions:
+  # RECR-D (Taghinezhad-Niar & Taheri, IEEE TSC 2025): EDF + normalized-penalty
+  # placement + TRM active-backup. Energy term dropped (alpha_energy = 0).
+  recr_d:
+    db: 0.5                  # dynamic balance factor: sub-deadline = D*(db*EFT+(1-db)*LFT)/cmax
+    zeta_cost: 1.0           # zeta, cost penalty weight (eq.43)
+    beta_deadline: 1.0       # beta, deadline penalty weight
+    gamma_reliability: 1.0   # gamma, reliability penalty weight
+    energy_alpha: 0.0        # alpha_energy DROPPED (framework has no energy)
+    theta_reliability: 0.9   # Theta, per-task reliability threshold
+    trm_max_rounds: 6        # TRM: bounded promotion rounds (estimate_rmax gate)
+    trm_batch_frac: 0.15     # fraction of remaining passive tasks promoted per round
+  # HFWPF / Hybrid-FT (Ren & Yao, IEEE TSC 2026): static core only. Slack rule
+  # (eq.8) picks resubmission (passive) vs replication (active, 2 replicas).
+  hfwpf:
+    db: 0.5                  # sub-deadline balance factor (as RECR-D)
+    t_boot: 0.0              # Tboot: framework has no VM boot -> 0 (paper uses 15s)
+    cap_bias: 0.3            # placement capacity bias strength (active->small, passive->large)
+  # GA placement: standard genetic algorithm as an evolutionary-metaheuristic
+  # reference (MTGP's original dynamic-makespan problem is not directly comparable).
+  ga_placement:
+    pop_size: 40
+    generations: 60
+    crossover_rate: 0.9
+    mutation_rate: 0.15      # per-gene mutation probability
+    tournament_k: 3
+    elitism: 2
+    seed_greedy: true        # seed one individual from greedy EFT placement
+    max_candidates: 64       # per-task candidate node cap (limits large-scale cost)
+  # RA-MOMA (Qin et al., IEEE TPDS 2023, CCF-A): reliability-aware multi-objective
+  # memetic (NSGA-II + hybrid HEFT init + 4 neighborhood operators). Static core:
+  # objectives (makespan, cost, recovery-risk); backup -> active m=2 replica.
+  ra_moma:
+    pop_size: 50
+    generations: 60
+    crossover_rate: 0.1      # paper-calibrated best cr
+    mutation_rate: 0.02      # paper-calibrated best mr
+    intensify_size: 20       # local intensification size ls per generation
+    tournament_k: 2
+    backup_init_prob: 0.3    # random-individual backup probability at init
+    max_candidates: 64       # per-task candidate node cap (limits large-scale cost)

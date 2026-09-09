@@ -360,6 +360,78 @@ def plot_budget(csv_dir: Path, out_dir: Path) -> None:
     _save(fig, out_dir, "fig_budget_convergence")
 
 
+def plot_hard_tier(csv_dir: Path, out_dir: Path) -> None:
+    """Hard-but-solvable tiers (tight2/tight3) across scales: GCN-ALNS vs ALNS.
+
+    Reads ``main_hard_{small,medium,large}`` runs and draws two panels over the
+    six (scale x scenario) cells: (A) feasible ratio for GCN-ALNS, ALNS and the
+    best built-in baseline; (B) feasible-only total cost for GCN-ALNS vs ALNS
+    (log-y, since small/medium/large magnitudes differ by ~10x).
+    """
+    runs = _load(csv_dir, "runs")
+    sub = _runs_by_tag_prefix(runs, "main_hard")
+    if sub is None or "sla_scenario" not in sub.columns:
+        return
+    scale_of = {"main_hard_small": "small", "main_hard_medium": "medium",
+                "main_hard_large": "large"}
+    sub = sub.assign(hscale=sub["tag"].map(scale_of)).dropna(subset=["hscale"])
+    if sub.empty:
+        return
+    sub["feasible"] = sub["feasible"].astype(bool)
+    cells = [(sc, se) for sc in _SCALE_ORDER for se in ("tight2", "tight3")]
+    labels = [f"{sc[0].upper()}/{se[-2:]}" for sc, se in cells]
+    baselines = ["HEFT", "PEFT", "No-FT", "Reactive-Only", "Reliability-Aware",
+                 "Criticality-Based Hybrid", "Critical-Path Backup", "Full-Proactive"]
+
+    def feas_ratio(sc, se, algo):
+        d = sub[(sub["hscale"] == sc) & (sub["sla_scenario"] == se)
+                & (sub["algorithm"] == algo)]
+        return d["feasible"].mean() if len(d) else np.nan
+
+    def feas_cost(sc, se, algo):
+        d = sub[(sub["hscale"] == sc) & (sub["sla_scenario"] == se)
+                & (sub["algorithm"] == algo) & sub["feasible"]]
+        c = pd.to_numeric(d["cost_total"], errors="coerce")
+        c = c[np.isfinite(c)]
+        return c.mean() if len(c) else np.nan
+
+    gcn_f = [feas_ratio(sc, se, "GCN-ALNS") for sc, se in cells]
+    alns_f = [feas_ratio(sc, se, "ALNS") for sc, se in cells]
+    bl_f = [np.nanmax([feas_ratio(sc, se, b) for b in baselines]) for sc, se in cells]
+    gcn_c = [feas_cost(sc, se, "GCN-ALNS") for sc, se in cells]
+    alns_c = [feas_cost(sc, se, "ALNS") for sc, se in cells]
+
+    x = np.arange(len(cells))
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5.2))
+
+    w = 0.27
+    axes[0].bar(x - w, gcn_f, w, label="GCN-ALNS", color="#4C72B0")
+    axes[0].bar(x, alns_f, w, label="ALNS", color="#DD8452")
+    axes[0].bar(x + w, bl_f, w, label="best baseline", color="#B0B0B0")
+    axes[0].set_ylabel("Feasible ratio")
+    axes[0].set_ylim(0, 1.05)
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(labels)
+    axes[0].set_xlabel("scale / scenario  (S/M/L x tight2/tight3)")
+    axes[0].set_title("Hard tiers: SLA-feasible ratio")
+    axes[0].legend(fontsize=9)
+    axes[0].grid(axis="y", ls=":", alpha=0.5)
+
+    w2 = 0.36
+    axes[1].bar(x - w2 / 2, gcn_c, w2, label="GCN-ALNS", color="#4C72B0")
+    axes[1].bar(x + w2 / 2, alns_c, w2, label="ALNS", color="#DD8452")
+    axes[1].set_ylabel("Total cost (feasible only, log)")
+    axes[1].set_yscale("log")
+    axes[1].set_xticks(x)
+    axes[1].set_xticklabels(labels)
+    axes[1].set_xlabel("scale / scenario")
+    axes[1].set_title("Hard tiers: cost on feasible solutions (GCN-ALNS <= ALNS)")
+    axes[1].legend(fontsize=9)
+    axes[1].grid(axis="y", ls=":", alpha=0.5)
+
+    _save(fig, out_dir, "fig_hard_tier_by_scale")
+
+
 def make_all(csv_dir: str | Path, out_dir: str | Path) -> None:
     csv_dir, out_dir = Path(csv_dir), Path(out_dir)
     plot_dimensionless(csv_dir, out_dir)
@@ -372,6 +444,7 @@ def make_all(csv_dir: str | Path, out_dir: str | Path) -> None:
     plot_ablation(csv_dir, out_dir)
     plot_sensitivity(csv_dir, out_dir)
     plot_budget(csv_dir, out_dir)
+    plot_hard_tier(csv_dir, out_dir)
 
 
 def main() -> None:
