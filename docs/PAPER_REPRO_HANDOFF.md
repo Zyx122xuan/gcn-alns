@@ -2,7 +2,7 @@
 
 > 目的:把 3 篇 CCF-B 论文复现为 GCN-ALNS 的对比基线,在**同一 `core.recovery.verify` 闸门**下与 GCN-ALNS/ALNS 公平比较。
 > 复现代码放在**新包 `src/gcnalns/reproductions/`**(不要塞进 `algorithms/`)。
-> 运行统一 `$env:PYTHONPATH="src"`(Windows PowerShell)。主项目进度见 `PROGRESS.md` / `GCN_IMPROVEMENT_HANDOFF.md`,实验报告见 `results/REPORT.md`(正文+附录 A/B)。
+> 运行统一 `$env:PYTHONPATH="src"`(Windows PowerShell)。主项目进度见 `docs/PROGRESS.md` / `docs/GCN_IMPROVEMENT_HANDOFF.md`,实验报告见 `results/REPORT.md`(正文+附录 A/B)。
 
 ## 0. 范围
 复现 3 篇(均已核实 = **IEEE TSC / CCF-B**);SRDS'25 GCN+DRL 已**放弃**(实为 workshop 论文、非 CCF-B、无容错)。
@@ -129,4 +129,4 @@ src/gcnalns/reproductions/
 - `eval/aggregate.py` 的 summary 只统计主对比 tag(`main_small/medium/large`);新基线要进主对比图,请用 `main_*` tag 或相应调整(见 `aggregate._MAIN_TAGS`)。
 - 机器:32 核 + 1×A40 + ~64GB RAM;large 单解 ~4.5h,谨慎;可能与 DAGFleet 共存,用 `--workers 8~16`。
 - 给下一个会话的起手提示:
-  > 读 `PAPER_REPRO_HANDOFF.md`。在新包 `src/gcnalns/reproductions/` 实现 RECR-D、HFWPF(静态核心)、GA 放置基线,注册进 registry,各自小规模冒烟过 `core.recovery.verify`,再并入主对比。运行用 `$env:PYTHONPATH="src"`,长任务放后台。
+  > 读 `docs/PAPER_REPRO_HANDOFF.md`。在新包 `src/gcnalns/reproductions/` 实现 RECR-D、HFWPF(静态核心)、GA 放置基线,注册进 registry,各自小规模冒烟过 `core.recovery.verify`,再并入主对比。运行用 `$env:PYTHONPATH="src"`,长任务放后台。

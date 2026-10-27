@@ -24,6 +24,7 @@ Recovery semantics:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from ..config import Config
@@ -62,6 +63,11 @@ def _fault_time(fault: Fault, sched: ScheduleResult, instance: Instance,
     if fault.kind == "node":
         starts = [s for (i, k), s in sched.start.items() if k == fault.k]
         return min(starts) if starts else 0.0
+    if fault.kind == "domain":
+        nodes = instance.continuum.nodes
+        starts = [s for (i, k), s in sched.start.items()
+                  if nodes[k].fault_domain == fault.domain]
+        return min(starts) if starts else 0.0
     # link: producer finish on k + comm to l
     d = instance.workflow.data.get((fault.i, fault.j), 0.0)
     return sched.finish[(fault.i, fault.k)] + factory.comm_delay(fault.k, fault.l, d)
@@ -82,7 +88,7 @@ def _rec_cost(instance: Instance, solution: Solution, i: int, k: int,
         d = wf.data.get((p, i), 0.0)
         kp = node_omega.get(p, k)
         comm_in += factory.comm_delay(kp, k, d)
-    risk = wf.tasks[i].criticality * (1.0 - pow(2.718281828, -node.failure_rate * p_ik))
+    risk = wf.tasks[i].criticality * (1.0 - math.exp(-node.failure_rate * p_ik))
     cost = node.cost_coef * p_ik
     return (rc["theta1"] * node.queue_wait + rc["theta2"] * comm_in
             + rc["theta3"] * p_ik + rc["theta4"] * risk + rc["theta5"] * cost)
@@ -131,7 +137,15 @@ def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
     link_rec = rcv["delta_link_rec"]
 
     t_omega = _fault_time(fault, base, instance, factory)
-    failed_node = fault.k if fault.kind == "node" else -1
+    # Set of physical nodes taken down by this fault. Single-point: node->{k},
+    # task/link->{} (no node destroyed here). Domain fault: the whole domain.
+    if fault.kind == "node":
+        failed_nodes = {fault.k}
+    elif fault.kind == "domain":
+        failed_nodes = {k for k, nd in instance.continuum.nodes.items()
+                        if nd.fault_domain == fault.domain}
+    else:
+        failed_nodes = set()
 
     order = topological_order(wf)
     f_omega: dict[int, float] = {}
@@ -173,9 +187,9 @@ def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
             start_k = node_free[k]
             start_k = max(start_k, input_ready(i, k, link_edge))
             finish_k = start_k + exec_time(instance, i, k)
-            # node fault: replica on failed node survives only if it would have
-            # finished by t_omega; else it is destroyed.
-            if k == failed_node:
+            # node/domain fault: replica on a failed node survives only if it
+            # would have finished by t_omega; else it is destroyed.
+            if k in failed_nodes:
                 if finish_k > t_omega + 1e-9:
                     directly_hit = True
                     continue  # destroyed
@@ -197,7 +211,7 @@ def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
             node_omega[i] = eff_k
         else:
             # dynamic reschedule + recompute on a fresh node
-            forbidden_nodes = {failed_node} if failed_node >= 0 else set()
+            forbidden_nodes = set(failed_nodes)
             forbidden_domains: set[str] = set()
             if active:
                 for k in replicas:

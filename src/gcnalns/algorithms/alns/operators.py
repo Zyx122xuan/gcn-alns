@@ -283,7 +283,8 @@ def _enhance_active(instance, sol, repairer, m_max):
         if sol.mode.get(i):
             continue
         k = sol.placement[i][0]
-        _, comm_in = repairer._comm_in(i, k, {p: sol.placement[p][0] for p in sol.placement}, {})
+        where = {p: sol.placement[p][0] for p in sol.placement}
+        _, comm_in = repairer._comm_in(i, k, where)
         if repairer.rec_risk(i, k, comm_in) > repairer.budget:
             promote.add(i)
     if promote:
@@ -299,7 +300,8 @@ def _downgrade_passive(instance, sol, repairer):
         if not sol.mode.get(i):
             continue
         k = sol.placement[i][0]
-        _, comm_in = repairer._comm_in(i, k, {p: sol.placement[p][0] for p in sol.placement}, {})
+        where = {p: sol.placement[p][0] for p in sol.placement}
+        _, comm_in = repairer._comm_in(i, k, where)
         if repairer.rec_risk(i, k, comm_in) <= repairer.budget:
             sol.placement[i] = [k]
             sol.mode[i] = False

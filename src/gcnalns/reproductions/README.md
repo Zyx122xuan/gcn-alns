@@ -27,10 +27,23 @@ TSC 18(5):2892-2903, 2025. DOI:10.1109/TSC.2025.3599497.
 
 | Paper element | Our adaptation |
 |---|---|
-| Alg.1 constraint distribution (EST/EFT/LST/LFT, dynamic balance) | Per-task sub-deadlines `dl_i = D*(db*EFT+(1-db)*LFT)/cmax` using structural timing (`_shared.sub_deadlines`). |
-| Alg.2 penalty `PN = zeta*cost + alpha*energy + beta*deadline + gamma*reliability` (eq.43) | Same, but **energy dropped** (`alpha_energy=0`); tasks placed in **EDF** order onto the min-`PN` resource. Norms: deadline `max(0,(EFT-dl_i)/dl_i)`, cost `MC/(MC_max+1)`, reliability `max(0, Theta - exp(-lambda_k*p_ik))`. |
+| Alg.1 constraint distribution (EST/EFT/LST/LFT, **dynamic** balance) | Per-task sub-deadlines `dl_i = EFT_i + DB*(LFT_i^D - EFT_i)` with `DB = a + (1-a)*rho` re-evaluated **per placement** from the slack still unspent (`_shared.DynamicSubDeadlines`). Freezing `rho` at the structural makespan (`_shared.sub_deadlines`, still used by HFWPF) grants every task the whole `LFT_i - EFT_i` independently: on a 150-task medium instance that is ~38 time units per task against a global slack of ~11, so all 150 sub-deadlines are met while `C_max` overshoots `D` by 2x and the gate below never fires. |
+| Alg.2 penalty `PN = zeta*cost + alpha*energy + beta*deadline + gamma*reliability` (eq.43) | Same, but **energy dropped** (`alpha_energy=0`); tasks placed onto the min-`PN` resource among those meeting `dl_i`, else earliest-finish catch-up. Norms: deadline `max(0,(EFT-dl_i)/dl_i)`, cost `MC/(MC_max+1)`, reliability `max(0, Theta - exp(-lambda_k*p_ik))`. |
+| Alg.2 task ordering (EDF) | **Replaced by the evaluator's canonical topological order.** `core.schedule_eval.compute_schedule` replays each node's queue in `topological_order(wf)` and ignores `solution.order`, and a node timeline is append-only (no gap filling). Planning in EDF order therefore makes Alg.2's own EFT estimates untruthful: it plans `C_max=103` that re-serialises to `262`. Because Alg.2 concentrates load on cheap resources (48 of 150 tasks on one node), the mismatch is far more damaging than for the spread-out EFT baselines that share `_greedy_eft_place`. Planning in the replay order makes plan and evaluation coincide exactly; sub-deadlines still steer Alg.2 via the resource-selection gate. |
 | Alg.3 TRM (CTMC success-probability backup) | **Reliability口径 replaced**: a task is promoted to active backup if it misses its sub-deadline / falls below `Theta`, **or** its reactive recovery exceeds the effective budget under our `estimate_rmax` gate. "Add backup" = `add_active_replicas(m=m_max)` (fault-domain-isolated). Bounded rounds (`trm_max_rounds`). |
 | Energy objective / IoT device battery model | Dropped entirely. |
+
+**Why RECR-D still ends near 0% feasible after the two fixes above.** The fixes
+remove the inflated makespan (`deadline_ok` on the small tier goes 0% ->
+20/33/60% for tight/medium/loose, and 0% -> 100% on medium-loose), but our gate
+also requires the recovery budget `R_eff = min(R^max, D - C_base)`. RECR-D
+minimises cost *subject to* the deadline, so it spends essentially the whole
+deadline: on small-loose `C_base/D = 0.97`, leaving `D - C_base = 3.6` against a
+measured `r_max = 21.5`. `D - C_base` is the binding term in every scenario, and
+Alg.3's TRM cannot recover it because promoting replicas shrinks `r_max` but not
+`C_base`. This is a genuine algorithmic gap, not a reproduction artifact: the
+paper never constrains recovery latency, so treating the deadline and the
+recovery window as separable is exactly what fails here.
 
 ## HFWPF / Hybrid-FT (`hfwpf.py`)
 

@@ -78,12 +78,6 @@ class GCNScorer(nn.Module):
             nn.Linear(h, 1),
         )
         # Second head (Part C): predicts P(active backup) for a (task, node)
-        # placement, so the GCN can also drive the fault-tolerance mode decision.
-        self.mode_mlp = nn.Sequential(
-            nn.Linear(3 * h + INTER_DIM, h), nn.ReLU(), nn.Dropout(self.dropout),
-            nn.Linear(h, 1),
-        )
-        # Second head (Part C): predicts P(active backup) for a (task, node)
         # pair, so the learned guidance can drive the fault-tolerance mode - not
         # just placement - which is what actually moves the feasibility needle.
         self.mode_mlp = nn.Sequential(

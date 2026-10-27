@@ -1,7 +1,7 @@
 # GCN 增益放大 + tight 可行性攻坚 —— 续作交接 (Handoff)
 
 > 本文件用于跨 session 续作，记录"让 GCN 从只降成本 → 影响可行率"与"攻克 tight 不可行"这一轮改造。
-> 主线进度见 `PROGRESS.md`；本轮计划见 `~/.cursor/plans/gcn-impact-and-tight_7df74ef7.plan.md`（**不要编辑**）。
+> 主线进度见 `docs/PROGRESS.md`；本轮计划见 `~/.cursor/plans/gcn-impact-and-tight_7df74ef7.plan.md`（**不要编辑**）。
 > 运行统一 `$env:PYTHONPATH="src"`（Windows PowerShell）。
 
 ## 增强轮状态(2026-07-16,续)
@@ -112,7 +112,7 @@
 4. **验证/复盘要点**
    - 主对比：**tight 场景 GCN-ALNS 可行率**是否较旧结果上升；GCN-ALNS vs ALNS 在可行率/成本的差距是否拉大。
    - 消融：`w/o Warm Start` / `w/o GCN Mode` / `w/o GCN Destroy` 相对 Full 的可行率/成本落差，用来**逐点归因 GCN 现在的贡献**（回答"GCN 作用太小"）。
-   - 更新 `results/REPORT.md` 与 `PROGRESS.md`。
+   - 更新 `results/REPORT.md` 与 `docs/PROGRESS.md`。
 
 ## 已知问题 / 注意事项
 - **tight 本质极难**：`beta=0.05` 使 r_eff 常仅 ~1-2s，被动恢复（detect1.0+replan0.5+comm+重执行）几乎必然超预算。若重训+A2 后 tight 仍近 0，属场景刻意设成的压力上界；可考虑（另开讨论）加一档"难但可解"的 tight（如 `beta 0.05→0.10`）或做 alpha/beta 可行性前沿扫描。

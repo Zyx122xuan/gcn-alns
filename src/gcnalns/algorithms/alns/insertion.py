@@ -49,8 +49,13 @@ class Repairer:
 
     # -- per-candidate quantities -------------------------------------------
     def _comm_in(self, i: int, k: int, where: dict[int, int],
-                 finish: dict[int, float]) -> tuple[float, float]:
-        """Return (earliest_input_ready, total_input_comm_delay) for (i,k)."""
+                 finish: dict[int, float] | None = None) -> tuple[float, float]:
+        """Return (earliest_input_ready, total_input_comm_delay) for (i,k).
+
+        ``ready`` requires predecessor finish times; when ``finish`` is None the
+        caller only needs ``comm_in`` (e.g. slack-based ``rec_risk``), and
+        ``ready`` is returned as 0.0 to avoid a misleading empty-dict argument.
+        """
         ready = 0.0
         comm = 0.0
         for p in self.pred[i]:
@@ -60,7 +65,8 @@ class Repairer:
                 continue
             cd = self.factory.comm_delay(kp, k, d)
             comm += cd
-            ready = max(ready, finish.get(p, 0.0) + cd)
+            if finish is not None:
+                ready = max(ready, finish.get(p, 0.0) + cd)
         return ready, comm
 
     def _pfail(self, i: int, k: int) -> float:
@@ -86,7 +92,14 @@ class Repairer:
         start = max(node_free.get(k, 0.0), ready)
         p_ik = exec_time(self.inst, i, k)
         ect = start + p_ik
-        cost = node.cost_coef * p_ik + self.cfg["cost"]["comm_cost_coef"] * 0.0
+        # compute cost + incoming communication cost (cross-node predecessor
+        # edges only), consistent with the global C_comm = sum rho_kl * d_ij.
+        comm_cost = self.cfg["cost"]["comm_cost_coef"] * sum(
+            self.inst.workflow.data.get((p, i), 0.0)
+            for p in self.pred[i]
+            if where.get(p) is not None and where.get(p) != k
+        )
+        cost = node.cost_coef * p_ik + comm_cost
         risk = self.inst.workflow.tasks[i].criticality * self._pfail(i, k)
         recrisk = self.rec_risk(i, k, comm_in)
         load = used_cpu.get(k, 0.0) / max(node.cpu_cap, 1e-9)

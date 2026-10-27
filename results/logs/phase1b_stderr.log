@@ -1,0 +1,8 @@
+python : D:\zyx\gcn-alns\src\gcnalns\viz\plots.py:400: RuntimeWarning: All-NaN axis encountered
+ËùÔÚÎ»ÖÃ D:\zyx\gcn-alns\rerun_costfix_phase1b.ps1:48 ×Ö·û: 5
++     python -m gcnalns.viz.plots --csv results/csv --out results/figur ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (D:\zyx\gcn-alns...xis encountered:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  bl_f = [np.nanmax([feas_ratio(sc, se, b) for b in baselines]) for sc, se in cells]

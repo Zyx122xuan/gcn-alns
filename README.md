@@ -25,8 +25,11 @@ src/gcnalns/
   experiments/              orchestration (main / ablation / sensitivity / scalability)
   viz/                       plotting (reads CSV only)
 tests/                       recovery-verifier golden-case tests
+tools/                       offline analysis, report, and debug scripts
+scripts/                     cost-fix rerun drivers (run from anywhere; they cd to repo root)
+docs/                        progress notes and handoff writeups
 data/{raw,instances}         raw datasets & generated instance JSON
-results/{raw_json,csv,figures}
+results/{raw_json,csv,figures,logs}
 ```
 
 ## Install
@@ -71,6 +74,9 @@ python -m gcnalns.gcn.train --data data/gcn --out results/gcn_model.pt
 
 # 4. plots
 python -m gcnalns.viz.plots --csv results/csv --out results/figures
+
+# 5. interactive dashboard (filters the runs in results/csv/runs.csv)
+streamlit run src/gcnalns/viz/dashboard.py
 ```
 
 ## Correctness gate

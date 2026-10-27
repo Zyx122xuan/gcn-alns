@@ -24,14 +24,13 @@ import math
 import time
 
 from ..algorithms.base import Scheduler, topo_node_order
-from ..algorithms.heft import _topo_priority_order
 from ..algorithms.replicas import add_active_replicas
-from ..core.dag import compute_structural
+from ..core.dag import compute_structural, topological_order
 from ..core.model import Instance, Solution
 from ..core.recovery import effective_budget, estimate_rmax
 from ..core.schedule_eval import compute_schedule, exec_time
 from ..data.links import get_factory
-from ._shared import passive_recovery_risk, sub_deadlines
+from ._shared import DynamicSubDeadlines, passive_recovery_risk
 
 
 class RECRD(Scheduler):
@@ -44,14 +43,8 @@ class RECRD(Scheduler):
         factory = get_factory(instance, cfg)
         compute_structural(instance.workflow, instance.continuum, cfg, factory)
 
-        _st, subdl = sub_deadlines(instance, float(p["db"]))
         theta = float(p["theta_reliability"])
-
-        # EDF: earliest sub-deadline first (ties broken by ranku for stability).
-        wf = instance.workflow
-        edf = sorted(wf.tasks, key=lambda i: (subdl.get(i, 0.0), -wf.tasks[i].ranku))
-
-        sol, flagged = self._penalty_place(instance, factory, edf, subdl, theta)
+        sol, flagged = self._penalty_place(instance, factory, theta)
 
         # TRM stage 1: tasks flagged during placement (deadline / reliability).
         m_max = int(cfg.get("alns.m_max", 2))
@@ -66,8 +59,7 @@ class RECRD(Scheduler):
         return sol
 
     # -- Alg.2 normalised-penalty placement ---------------------------------
-    def _penalty_place(self, instance: Instance, factory, order: list[int],
-                       subdl: dict[int, float], theta: float
+    def _penalty_place(self, instance: Instance, factory, theta: float
                        ) -> tuple[Solution, set[int]]:
         p = self.cfg["reproductions"]["recr_d"]
         zeta = float(p["zeta_cost"])
@@ -77,7 +69,18 @@ class RECRD(Scheduler):
         wf = instance.workflow
         nodes = instance.continuum.nodes
         pred = {t: wf.predecessors(t) for t in wf.tasks}
-        order = _topo_priority_order(wf, order)  # keep a valid DAG extension
+        # ``compute_schedule`` replays every node's queue in this canonical
+        # topological order and a node timeline is append-only (no gap filling),
+        # so planning in any other order (e.g. EDF) makes the EFT estimates
+        # below untruthful: on a 150-task instance Alg.2 plans a makespan of 103
+        # that re-serialises to 262. Since Alg.2 concentrates load on cheap
+        # resources, the mismatch is far more damaging than for a spread-out
+        # EFT baseline, so we plan in the evaluator's order. The sub-deadlines
+        # still drive Alg.2 through the resource-selection gate below.
+        order = topological_order(wf)
+        # Alg.1 line 6: the balance factor is dynamic, so sub-deadlines are
+        # re-derived per placement from the slack that is still unspent.
+        dyn = DynamicSubDeadlines(instance, float(p["db"]))
 
         sol = Solution()
         node_free = {k: 0.0 for k in nodes}
@@ -117,7 +120,7 @@ class RECRD(Scheduler):
                 sol.meta["capacity_overflow"] = True
             else:
                 cost_max = max(c[3] for c in cands)
-                dl_i = subdl.get(i, 0.0)
+                dl_i = dyn.of(i)
                 # RECR-D is deadline-CONSTRAINED: prefer the min-penalty resource
                 # among those meeting the task sub-deadline; only if none can, fall
                 # back to the earliest-finish node (best-effort catch-up) so cost
@@ -144,7 +147,8 @@ class RECRD(Scheduler):
             finish[i] = best_eft
             where[i] = best_k
             # Alg.3 trigger: sub-deadline missed or reliability below Theta.
-            dl_i = subdl.get(i, 0.0)
+            dl_i = dyn.of(i)
+            dyn.observe(i, best_eft)
             if (dl_i > 1e-12 and best_eft > dl_i + 1e-9) or best_rel < theta:
                 flagged.add(i)
 

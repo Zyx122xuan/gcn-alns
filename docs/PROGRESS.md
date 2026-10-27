@@ -80,7 +80,7 @@
 ### 数据 / 模型（已产出）
 - 实例：`data/instances/{small,medium,large}` = **45 / 30 / 15 = 90 个**（5 工作流 × 3 SLA × N）。
 - GCN 数据集：`data/gcn/dataset.pkl`，**38 个可行实例**（train27/val6/test5）；tight 场景多数不可行（论文预期）。建集日志 `data/gcn_build.log`。
-- GCN 模型：`results/gcn_model.pt`（A40，early stop@55，best val=0.5749，~39s）。训练日志 `results/gcn_train.log`。
+- GCN 模型：`results/gcn_model.pt`（A40，early stop@55，best val=0.5749，~39s）。训练日志 `results/logs/gcn_train.log`。
 
 ### 实验运行状态
 - **主实验（已完成）**：`run_main` 三规模分 tag —— `main_small`(repeats10,iter1000,1260 runs)、`main_medium`(repeats10,iter1000,840 runs)、`main_large`(repeats5,iter800,270 runs)。结果见 `results/raw_json/main_*.json` 与 `results/csv/*.csv`，18 张图见 `results/figures/`。
@@ -123,7 +123,7 @@
 ## 如何在新 session 继续（给用户的提示词）
 全链路阶段 0–9 已完成；主实验已出报告级结果，消融/敏感性/可扩展性在后台。新会话可发：
 
-> 继续 gcn-alns 项目（e:\user\zhangyuxuan\gcn-alns\gcn-alns）。先读 `PROGRESS.md`。
+> 继续 gcn-alns 项目（e:\user\zhangyuxuan\gcn-alns\gcn-alns）。先读 `docs/PROGRESS.md`。
 > 检查后台实验（ablation/sensitivity/scalability）是否跑完，必要时用同 --tag 续跑，
 > 然后重跑 `eval.aggregate` + `viz.plots` 出全量 CSV/图。运行用 `$env:PYTHONPATH="src"`，长任务放后台。
 

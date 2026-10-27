@@ -1,10 +1,17 @@
 """Cost model (Modeling doc sec.10).
 
-C_total = C_compute + C_backup + C_comm + C_reserve + C_recovery
+C_total = C_compute + C_comm + C_reserve + C_recovery
 
 * C_compute  = sum over all deployed instances rho_k * p_ik
+               (this already covers active-backup replicas, since every deployed
+               instance is counted; C_backup is therefore NOT added to the total
+               to avoid double-counting active-backup replica cost)
 * C_backup   = sum over active-backup tasks, over their instances rho_k * p_ik
-* C_comm     = sum over edges rho_comm * d_ij  (effective cross-node transfers)
+               (informational breakdown only; excluded from C_total)
+* C_comm     = sum_{(i,j) in A} sum_{k in repl(i), l in repl(j)} x_ik x_jl rho_kl d_ij
+               (summed over ALL replica pairs, consistent with the schedule model
+               where every replica of a task receives its predecessors' data;
+               intra-node pairs k == l incur no transfer cost)
 * C_reserve  = rho_res * sum over passive tasks sigma_i  (reserved recompute capacity)
 * C_recovery = recovery_cost_weight * E[extra recovery compute]  (secondary; optional)
 """
@@ -28,7 +35,10 @@ class CostBreakdown:
 
     @property
     def total(self) -> float:
-        return self.compute + self.backup + self.comm + self.reserve + self.recovery
+        # NOTE: backup is intentionally excluded. ``compute`` already sums over
+        # every deployed instance (active-backup replicas included), so adding
+        # ``backup`` here would double-count active-backup replica cost.
+        return self.compute + self.comm + self.reserve + self.recovery
 
     def as_dict(self) -> dict:
         return {
@@ -59,14 +69,21 @@ def compute_cost(instance: Instance, solution: Solution, sched: ScheduleResult,
             if active:
                 bd.backup += c
 
-    # communication over effective placement
+    # communication over ALL replica pairs (Modeling doc sec.10):
+    #   C_comm = sum_{(i,j)} sum_{k in repl(i), l in repl(j)} rho_kl * d_ij
+    # This matches compute/schedule accounting, where every replica of task j
+    # receives input data from the predecessor i. Intra-node pairs (k == l) are
+    # local transfers and incur no cost.
     coef = cc["comm_cost_coef"]
     for (i, j) in wf.edges:
-        ki = sched.eff_node.get(i)
-        kj = sched.eff_node.get(j)
-        if ki is None or kj is None or ki == kj:
+        d = wf.data.get((i, j), 0.0)
+        if d == 0.0:
             continue
-        bd.comm += coef * wf.data.get((i, j), 0.0)
+        for ki in solution.replicas(i):
+            for kj in solution.replicas(j):
+                if ki == kj:
+                    continue
+                bd.comm += coef * d
 
     # reserved recompute capacity for passive tasks
     rho_res = cc["reserve_cost_coef"]
