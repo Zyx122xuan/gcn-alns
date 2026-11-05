@@ -1,0 +1,63 @@
+% Overleaf: select main.tex, pdfLaTeX, and BibTeX (the default latexmk workflow).
+% Generic IEEE journal format. Use the target venue's template before submission.
+\documentclass[journal]{IEEEtran}
+% For a conference submission, replace the line above with:
+% \documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\interdisplaylinepenalty=2500
+\usepackage{graphicx}
+\usepackage{booktabs,array}
+\usepackage{xcolor}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage[hidelinks]{hyperref}
+\input{macros}
+
+\title{GCN-Guided Adaptive Large Neighborhood Search for Recovery-Latency-Constrained Workflow Scheduling in the Computing Continuum}
+\author{Author names and affiliations to be added}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Workflow deployments across cloud, edge, and device resources must balance
+execution cost against both application deadlines and the disruption caused by
+failures. A deployment that completes before its deadline can still leave
+insufficient time for recovery. This paper studies recovery-latency-constrained
+hybrid fault-tolerant scheduling of directed acyclic graph workflows. The
+decision combines task placement, selective active replication, and passive
+reexecution under a deterministic recovery policy. Feasibility couples the
+nominal makespan with the largest additional delay over an explicitly defined
+set of task-copy, node, and communication-failure scenarios. We develop
+GCN-ALNS, a graph-convolution-guided adaptive large neighborhood search that
+uses a feasibility-first objective, diversified initialization, and stagnation
+restarts. A supervised resource-graph scorer guides construction and repair,
+while an exhaustive scenario verifier determines whether an incumbent may be
+reported as feasible. Protection modes follow a recovery-aware heuristic,
+while learned placement scores also rank replica destinations. The independent
+evaluation protocol separates demonstration generation, model selection, and
+held-out comparisons across three problem scales, and measures feasibility,
+cost, recovery margin, and search effort through paired instance-level
+analysis.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Workflow scheduling, fault tolerance, recovery latency, computing continuum,
+graph convolutional networks, adaptive large neighborhood search.
+\end{IEEEkeywords}
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_system_model}
+\input{sections/04_method}
+\input{sections/05_experimental_design}
+\input{sections/06_results}
+\input{sections/07_discussion}
+\input{sections/08_conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}

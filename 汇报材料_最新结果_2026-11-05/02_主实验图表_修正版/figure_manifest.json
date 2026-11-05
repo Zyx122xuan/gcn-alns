@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-05",
+  "main_records": 4200,
+  "instances": 90,
+  "algorithms": 14,
+  "protocol_sha256": "0e20eb8f74bce033de5b4e881e319d667d1bf3c87bafb87b8e312f89b33a98cb",
+  "experiment_code_sha256": "75b407f286b90d95c3de7222a6f0aa2ad9ea59a29933083eae6c7b6f4a687696",
+  "selected_model_sha256": "6a4cf00246dd5de6d5ec034a4a245aee2cbe534a03cc3556b37930da696cf093",
+  "source_files_sha256": {
+    "results\\independent_v1\\pipeline_plan.json": "021d572b6ee6360375e9d943569d58910de5ab29707d43d0bffc7c43194d4330",
+    "results\\independent_v1\\model_selection.json": "f5f94c55f1bfa08c22869dffb56575d7aad830e7e51fcceb9ad3d2779a733b50",
+    "results\\independent_v1\\summary.json": "c040a7d4ad791c91e6b509af59e5036116122f1fdf5ac3558eb617c37237d5e6",
+    "results\\independent_v1\\test\\raw_json\\main_small.json": "066b75b7def2a03a6039dd9052890a9437fa53ba2707223d8d3884944c6e6995",
+    "results\\independent_v1\\test\\raw_json\\main_medium.json": "2172d2a233d91b9f80fc1218a9b2fdd53099a0c75a276b663278fbb3d375aa2e",
+    "results\\independent_v1\\test\\raw_json\\main_large.json": "b6e31a898d16f484bc6917311c993b37a49d30efb080b2ce46f3252a7e941663"
+  },
+  "render_script_sha256": "d9952ef75129b55cfda4abc3660a429c72c0f112ee8aeb09822a8bb758eba947",
+  "protected_experiment_files_verified": 62,
+  "figures": {
+    "fig_cost_breakdown": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Feasible seed means per instance, then successful instances equally weighted; n is successful instances. Each stack sums to reported total cost. Backup is already inside compute and is not stacked again. N/F: no feasible output. Successful subsets differ across algorithms.",
+      "correction": "Remove duplicated backup charge; separate problem scales and feasible-only instance-mean components.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_cost_per_task": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. Feasible runs only; n is the number of instances with feasible output; N/F denotes no feasible output, not a zero metric value. ",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_scalability_runtime": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seed means per instance, then all instances at each scale equally weighted. ALNS limits: 1000 / 1000 / 800 iterations; stage worker counts: 8 / 8 / 12. Training excluded. Solver families use their registered search budgets; curves are not matched-wall-clock comparisons.",
+      "correction": "Filter main_* before aggregation; remove budget/model-diagnostic runs; retain all 14 main algorithms.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_feasible_ratio": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then all 90 instances equally weighted. 95% bootstrap intervals preserve scale allocation; intervals omitted for constant samples. All runs included; no filtering on feasibility.",
+      "correction": "Instance macro mean replaces unequal seed/run weighting; fixed 45/30/15 scale allocation.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_feasible_ratio_by_scale": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. All runs included. ",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_sla_violation": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then all 90 instances equally weighted. 95% bootstrap intervals preserve scale allocation; intervals omitted for constant samples. All runs included; no filtering on feasibility.",
+      "correction": "Instance macro mean replaces unequal seed/run weighting; fixed 45/30/15 scale allocation.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_backup_ratio": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then all 90 instances equally weighted. 95% bootstrap intervals preserve scale allocation; intervals omitted for constant samples. All runs included; no filtering on feasibility.",
+      "correction": "Instance macro mean replaces unequal seed/run weighting; fixed 45/30/15 scale allocation.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_prune_ratio": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. All runs included. ",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_gcn_infer": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. All runs included. Only the model-using solver is shown; training time excluded.",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_convergence": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. Feasible runs only; n is the number of instances with feasible output; N/F denotes no feasible output, not a zero metric value. Recorded last feasible-register update index (zero-based); this is not a convergence guarantee.",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_safety_margin": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Seeds averaged within instance, then instances equally weighted within each scale. 95% instance-bootstrap intervals; omitted for n<2 or constant samples. Feasible runs only; n is the number of instances with feasible output; N/F denotes no feasible output, not a zero metric value. ",
+      "correction": "Main tags only; scale-separated instance means; explicit conditioning and valid sample counts.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    },
+    "fig_sla_by_scenario": {
+      "caption": "Source: independent_v1/main_* only; 90 held-out instances (45 small / 30 medium / 15 large). Each cell first averages seeds within instance, then instances. Each scenario contains 15 / 10 / 5 instances at small / medium / large scale. The recorded violation flag equals 1 minus feasibility.",
+      "correction": "Do not pool scales with unequal repeats within SLA groups; show all nine scale-by-scenario cells.",
+      "formats": [
+        "png",
+        "svg"
+      ]
+    }
+  },
+  "aggregation": "Average seeds within iid, then equally weight instances. Conditional metrics use instances having feasible runs; subsets differ by algorithm.",
+  "intervals": "2000 instance bootstrap samples, seed 2026; all-scale intervals stratified at fixed 45/30/15 allocation; omit for n<2 or constant values.",
+  "output_files_sha256": {
+    "fig_backup_ratio.csv": "0cb15446a9799bbf21aee6c45727ea9f8bb6a0b5703f01feef22f024a17fa4fa",
+    "fig_backup_ratio.png": "ed423f3d8da2eba276f95cf848d8cac8d3cc1b7c81f0246e30b97d6fb4f22c58",
+    "fig_backup_ratio.svg": "216c1eaaad0a245c258b1fb161f589c24882f633ec85491dddd5bfd46453609c",
+    "fig_convergence.csv": "6f42c9b0c9b09df208ef67a9181f10ba478781de10d7a2fa7ea647bd284132fd",
+    "fig_convergence.png": "aba3d2d890d488695142b13153b8a5204524fde6ea6d7ffba4270e7cc1ff780e",
+    "fig_convergence.svg": "0894a999e070580c23972886f2aaa14219f1b9905281cb949b507113b0559bda",
+    "fig_cost_breakdown.csv": "f8f105012ac7a3aa7baf358bcbc8f5f2014333a0f98e6d3db2ca86f537f7b95c",
+    "fig_cost_breakdown.png": "b8fe4f34f80c5e97afed92f816522dee69446bfc8204635178dd53ced8a2d820",
+    "fig_cost_breakdown.svg": "6778e743face8004f346852cf93fb7d3d31dafb8c72ba5c61d42bf0f97c45749",
+    "fig_cost_per_task.csv": "62c52223827f621893119c27fda06a9db0d8e0e3053732c68c9625b20a7e964a",
+    "fig_cost_per_task.png": "6e1d12220fc6209d1fe21963ee0b7000dc3e0d20ce9bb5bde1cf79170eefdd96",
+    "fig_cost_per_task.svg": "579b7a55d89fb9d7dbe86fa319214c99723dd76ce3e3c9f126698926614ba8fa",
+    "fig_feasible_ratio.csv": "84a1f59019c41aa67ccde6a206b253b75857ca4080c78330458826cfd775aa27",
+    "fig_feasible_ratio.png": "70638b80f6024314864c9a01de95ee291ebfec9063b7d2f3d2b5f437f8df14c3",
+    "fig_feasible_ratio.svg": "d3a13c3c7e387e886e433586fe21a9da38b833c0d375b0dcf4e7fc02363685eb",
+    "fig_feasible_ratio_by_scale.csv": "52d22c6d82412e972d275be7754af517e2511e1f3335d26777a4a5525a29017e",
+    "fig_feasible_ratio_by_scale.png": "6fab5cc8bb799e77cb85be8c819d7a8b433f98d9f2e6f3c0485d5f19c69b53a6",
+    "fig_feasible_ratio_by_scale.svg": "3f1fa998f8ad5945ed73a95e1e5d37713ae841f0a429a77ec7c4090d1d76559e",
+    "fig_gcn_infer.csv": "38aef1fd7726d3878af423255ca155e396eb890d4efe6b12f01885834258f700",
+    "fig_gcn_infer.png": "f337ad466b83f6b4581225d0f693a5174ce791f79d52ebe4f867065d77f63d0c",
+    "fig_gcn_infer.svg": "58a2311bf0549517c22e843350ee48f26a9cec26da54c97e88d50b7f08132eef",
+    "fig_prune_ratio.csv": "d6f91b3eb2ef31cff256fcf14eb34c8a35ff0766b9c75aa6b7dd55a21e42ec04",
+    "fig_prune_ratio.png": "12f3109adaf3cac221a1194e9230ac33b11f31d3af5af1f18ea54a84516bb2f6",
+    "fig_prune_ratio.svg": "ba4bac0d0c91318a1d4c0acf878a957bef50dc865a229a9724a73ca389862ad9",
+    "fig_safety_margin.csv": "a26077fa62251b6b737c5e4e02259e37c89de022ada4558cbdbeec619eec4380",
+    "fig_safety_margin.png": "c9d42fd8afc6a9a341a855586d4678a36ac87265f348412b87db7ac26b1685e6",
+    "fig_safety_margin.svg": "e9997ad6695150dd855e5cdbe84f6a63ea922741986223a60b9e7f1bec8f4332",
+    "fig_scalability_runtime.csv": "30e1af59764bc0eb3e8328072d392fc9ded229e9b08d2d2568f8de4d7b33f8d9",
+    "fig_scalability_runtime.png": "0295f59cb42e5f580d42c701c17e5069955b20fb8b7826bff520a1f8a4669518",
+    "fig_scalability_runtime.svg": "97d6e8473232bc69ec121eb7299394dc1d71e6ae61b601dadcc4dd5a60f64d99",
+    "fig_sla_by_scenario.csv": "507166f1c5373c51b0eeaa1b4f70941d612373ae5df591d47ca6a58990e3cee3",
+    "fig_sla_by_scenario.png": "148005a8db8df5d8d036aeb6f9b9b1c865445f69b1ed9841d4db04513859d7d2",
+    "fig_sla_by_scenario.svg": "0feb4243ea05a09b4cfa60a863ecadb9e0e74b13b3e2d6f9424715f437cfc5cb",
+    "fig_sla_violation.csv": "0be50a3b59eefbe5f12b0b236237485fc1614157f351cca7dd797ca4590b673b",
+    "fig_sla_violation.png": "2838cb985d593e75989055ac235d7e6698bb7b939d681de0e36a24cf2633fafa",
+    "fig_sla_violation.svg": "7329aecd3f6131c307bb38fb63843986cec95493ec36e10a1d7a5afbd0f9d0ff",
+    "instance_plot_data.csv": "098d24270bc2abffb2338df23939289c39928e82027802638d614691f9d70689",
+    "preview_contact_sheet.png": "83c4f0d8bce5809d627ccaced982bec531b1360dec62baf589c1d083a2b4c273",
+    "README.md": "d362ccb8422b7bbf28119938b5e84e4911be33e6e9e376ff09177375150f6cef"
+  }
+}

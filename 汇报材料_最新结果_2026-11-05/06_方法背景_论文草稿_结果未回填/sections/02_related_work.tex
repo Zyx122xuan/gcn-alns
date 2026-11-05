@@ -1,0 +1,62 @@
+\section{Related Work}
+\label{sec:related_work}
+\subsection{Heterogeneous Workflow Scheduling}
+HEFT combines task prioritization with resource selection based on estimated
+finish times, while PEFT uses optimistic downstream costs to improve
+placement decisions \cite{topcuoglu2002heft,arabnejad2014peft}. These methods
+remain relevant as low-overhead references and initial-solution generators.
+Our implementation fixes the evaluator's per-node order to a canonical
+topological replay and does not optimize task order or insert tasks into idle
+gaps. Accordingly, the HEFT/PEFT-style baselines in our experiments should be
+understood as adaptations to this deployment evaluator, rather than a claim
+to reproduce every scheduling freedom of their original formulations.
+
+\subsection{Reliability and Hybrid Fault Tolerance}
+RA-MOMA studies reliability-aware multi-objective workflow scheduling in a
+multi-cloud setting using memetic search \cite{qin2023ramoma}. RECR-D addresses
+fault-tolerant cost-efficient scheduling for energy- and deadline-constrained
+IoT workflows in an edge--cloud continuum \cite{taghinezhad2025recrd}. HFWPF
+considers hybrid fault tolerance with performance-fluctuating cloud resources
+\cite{ren2026hfwpf}. These studies motivate the use of selective replication,
+reexecution, and problem-specific placement decisions. They also differ in
+energy modeling, resource elasticity, execution-time uncertainty, reliability
+objectives, and online behavior.
+
+The present study focuses on a different constraint: recovery must fit both
+an explicit delay limit and the deadline slack left by the chosen nominal
+deployment. We adapt the placement and protection mechanisms of selected
+methods to a common static evaluator and describe the removed or remapped
+features in Section~\ref{sec:baselines}. In particular, an adapted method's
+behavior under our recovery-delay gate cannot establish that the original
+method is inferior on its original problem. This distinction is essential
+when the adaptation removes an uncertainty model or an online decision stage
+that is central to the source method.
+
+\subsection{Large Neighborhood Search and Learned Guidance}
+ALNS extends large neighborhood search by adjusting the selection weights of
+multiple destroy and repair operators according to their observed search
+outcomes \cite{ropke2006alns,pisinger2007general}. This makes it suitable for
+combining placement, replica, and protection-mode changes without enumerating
+the entire deployment space. Our solver adds an explicit feasibility-first
+phase and uses full scenario verification selectively when considering
+feasible incumbents.
+
+GCNs learn node representations through normalized graph propagation
+\cite{kipf2017gcn}. Here, the resource graph represents communication-based
+proximity among continuum nodes. The learned score estimates the preference
+of a task--node assignment under solver demonstrations; it is not an
+independent proof of feasibility or an estimate of a globally optimal
+assignment. Training is supervised rather than reinforcement-based, and the
+score table remains fixed throughout the search for a given instance. The
+research question is whether this offline prior improves an already
+constraint-aware search under independent evaluation.
+
+\subsection{Workflow Data and External Validity}
+WfCommons provides workflow instances and generators that support research
+with realistic application characteristics \cite{coleman2022wfcommons}.
+The experiments specified in this manuscript currently use custom synthetic
+generators whose schemas and broad workflow shapes are inspired by
+established scientific workflows and cluster-resource traces. They do not use
+real WfCommons executions or raw Alibaba machine traces. Existing parsers and
+planned data integration are therefore implementation capabilities, not
+evidence that the present experimental instances are trace-driven.

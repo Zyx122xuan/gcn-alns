@@ -1,0 +1,24 @@
+\begin{table}[!t]
+\caption{Principal notation}
+\label{tab:notation}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.23\columnwidth}p{0.70\columnwidth}@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$G=(\taskset,\edgeset)$ & Workflow DAG and dependency edges \\
+$\nodeset$, $g_k$ & Resource nodes and node $k$'s fault domain \\
+$w_i,\sigma_i,\mu_i$ & Task workload, CPU demand, and memory demand \\
+$c_k,u_k,q_k$ & Compute speed, background load, and recovery queue estimate \\
+$x_{ik},y_i$ & Copy-placement indicator and active-replication mode \\
+$\copies{i}$ & Nodes hosting copies of task $i$ \\
+$p_{ik},\tau_{k\ell}(d)$ & Execution time and transfer delay \\
+$D,R_{\mathrm{SLA}}$ & Deadline and declared recovery-delay limit \\
+$\cbase,C^{\omega}$ & Nominal and scenario-specific makespan \\
+$\rmax,\reff$ & Largest additional delay and effective recovery budget \\
+$h_i,s_{ik}$ & Structural task criticality and learned placement score \\
+$\rhat,V$ & Recovery surrogate and estimated violation \\
+\bottomrule
+\end{tabular}
+\end{table}

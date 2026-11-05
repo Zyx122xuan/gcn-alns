@@ -1,0 +1,13 @@
+\begin{tikzpicture}[x=0.68cm,y=0.63cm,>=Stealth,font=\footnotesize]
+ \fill[gray!16] (0,0)--(5.4,0)--(3.4,2.0)--(0,2.0)--cycle;
+ \draw[->] (0,0)--(6.0,0) node[below right] {$\cbase$};
+ \draw[->] (0,0)--(0,3.2) node[above] {$\rmax$};
+ \draw[thick] (0,2.0)--(3.4,2.0)--(5.4,0);
+ \draw[dashed] (3.4,0)--(3.4,2.0);
+ \node[left] at (0,2.0) {$R_{\mathrm{SLA}}$};
+ \node[below] at (5.4,0) {$D$};
+ \node[below] at (3.4,0) {$D-R_{\mathrm{SLA}}$};
+ \node at (1.7,0.85) {Feasible};
+ \node[rotate=-43,above] at (4.45,1.05) {$D-\cbase$};
+ \node[align=center] at (3.0,2.85) {Nominal makespan and additional delay\\are measured in seconds};
+\end{tikzpicture}

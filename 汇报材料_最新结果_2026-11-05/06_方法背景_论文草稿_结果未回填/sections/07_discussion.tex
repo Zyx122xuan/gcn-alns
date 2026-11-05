@@ -1,0 +1,66 @@
+\section{Discussion and Limitations}
+\label{sec:discussion}
+\subsection{Scope of Recovery Guarantees}
+The recovery gate exhaustively evaluates a finite deterministic scenario set.
+Within this model, a feasible output satisfies the stated deadline and
+recovery limits. This statement should not be extended to arbitrary failure
+times, simultaneous faults, all replica-transfer failures, or stochastic
+real-time executions. Node and copy failures are injected at different
+predefined times, and the replay is not a general event-driven model of
+every possible execution history. Broader failure coverage would require an
+expanded scenario set and a corresponding re-evaluation.
+
+Domain-separated replicas provide a construction-level protection rule, but
+the default gate tests single-copy, node, and effective-transfer faults.
+Consequently, an unchanged single-point feasible rate after relaxing domain
+separation would not establish that separation is unnecessary under
+correlated outages. Conversely, correlated-outage results must specify which
+domains fail and whether dynamic reexecution remains available. We do not
+claim a domain-failure advantage without that additional experiment.
+
+\subsection{Learning Signal and Generalization}
+The scorer imitates feasible, low-cost teacher deployments rather than
+globally optimal assignments. A candidate not chosen by the teacher can
+still participate in a good deployment. Limited assignment-label coverage,
+limited supervised validation instances, and synthetic feature distributions
+can therefore constrain generalization.
+
+The resource-graph score table is deployment-independent and fixed during a
+search. This makes inference inexpensive relative to repeatedly evaluating a
+network, but it cannot explicitly react to changes in partial resource
+occupancy or to the evolving recovery bottleneck. The feasibility-first
+objective, repair logic, and scenario gate continue to carry the main
+constraint-handling responsibilities. End-to-end learning utility must be
+established empirically rather than inferred from classification AUC.
+
+\subsection{Search and Cost Interpretation}
+The recovery surrogate is not an admissible bound. Screening on that
+surrogate can prevent some truly feasible deployments from being checked.
+The distinction between the quick deployment cost and the full
+recovery-augmented objective also prevents a claim of monotonic full-cost
+improvement. The solver should be viewed as a bounded heuristic returning
+a scenario-verified feasible deployment when it finds one.
+
+Communication charges cover all provisioned replica pairs while readiness
+selects an effective producer. Resource limits constrain cumulative deployed
+footprint rather than instantaneous CPU sharing, and the recovery charge is
+a uniformly averaged delay proxy. These are explicit modeling choices;
+different charging or reservation models can change the preferred
+replication policy. Failure-rate features guide placement but do not turn
+the uniform scenario average into a probability-weighted risk measure.
+
+\subsection{External Validity and Baseline Adaptation}
+The custom workflow shapes and synthetic machine snapshots support
+controlled comparisons but do not constitute validation on real executions.
+Task CPU and memory demands are homogeneous in the present synthetic path,
+and fault domains are generated rather than measured. Real workflow traces,
+measured resource demands, and observed correlated-failure groups are
+important follow-up evaluations.
+
+The external baselines also face an adaptation limitation. Mapping a
+multi-objective reliability algorithm or an uncertainty-aware hybrid method
+onto deterministic, fixed-order, fixed-resource scheduling can remove some
+of its strengths. A shared verifier supports consistent scoring of the
+adapted deployments; it does not eliminate that limitation. The strongest
+method-specific comparison for the learned increment is therefore the
+nonlearned ALNS ablation under the same search and recovery framework.

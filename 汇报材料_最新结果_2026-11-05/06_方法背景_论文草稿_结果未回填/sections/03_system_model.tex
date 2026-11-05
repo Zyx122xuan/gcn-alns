@@ -1,0 +1,224 @@
+\section{System Model and Problem Formulation}
+\label{sec:model}
+\input{tables/notation}
+\subsection{Workflow and Computing Continuum}
+A workflow is a DAG $G=(\taskset,\edgeset)$. Task $i$ has workload $w_i$,
+CPU demand $\sigma_i$, and memory demand $\mu_i$. Dependency $(i,j)$ carries
+data volume $d_{ij}$. The resource set $\nodeset$ is partitioned into cloud,
+edge, and device tiers. Node $k$ has compute speed $c_k$, CPU capacity $C_k$,
+memory capacity $M_k$, background utilization $u_k$, unit compute price
+$\rho_k$, failure-rate parameter $\lambda_k$, and fault-domain label $g_k$.
+Its residual deployment capacities are
+\begin{equation}
+ \overline C_k=C_k(1-u_k),\qquad
+ \overline M_k=M_k(1-u_k).
+\end{equation}
+Execution time is deterministic: $p_{ik}=w_i/c_k$. For different nodes,
+\begin{equation}
+ \tau_{k\ell}(d)=L_{k\ell}+d/B_{k\ell},\qquad k\ne\ell,
+\end{equation}
+where $L_{k\ell}$ and $B_{k\ell}$ are link latency and bandwidth. A small
+configured local-access delay is used when $k=\ell$. The continuum is fixed
+for a scheduling instance; elastic node provisioning, energy consumption,
+and stochastic execution-time fluctuations are outside this model.
+
+\subsection{Placement and Protection Modes}
+Let $x_{ik}\in\{0,1\}$ indicate whether task $i$ has a copy on node $k$, and
+let $y_i\in\{0,1\}$ denote its protection mode. Passive tasks have one
+deployed copy and can be reexecuted after failure. Active tasks have multiple
+concurrently provisioned copies. Define
+$\copies{i}=\{k:x_{ik}=1\}$ and impose
+\begin{equation}
+ 1+y_i\leq \sum_k x_{ik}
+ \leq 1+(m_{\max}-1)y_i.
+ \label{eq:replicas}
+\end{equation}
+The implementation uses $m_{\max}=2$, so an active task has exactly two
+copies. For each fault domain $g$, construction enforces
+\begin{equation}
+ \sum_{k:g_k=g}x_{ik}\leq 1.
+ \label{eq:domains}
+\end{equation}
+This is a replica-separation requirement. It does not imply that the default
+verification set includes whole-domain outages.
+
+The capacity model constrains the cumulative footprint of deployed task
+copies:
+\begin{align}
+ \sum_i\sigma_i x_{ik}&\leq\overline C_k, & k&\in\nodeset,\\
+ \sum_i\mu_i x_{ik}&\leq\overline M_k, & k&\in\nodeset.
+ \label{eq:capacity}
+\end{align}
+These inequalities reserve deployment resources across tasks; they are not
+instantaneous resource constraints that release capacity after every task
+completion. This assumption is maintained during recovery placement, which
+starts from the original deployment footprint and adds reexecution demand.
+
+\subsection{Nominal Schedule Evaluation}
+The evaluator traverses tasks in a deterministic topological order and
+serializes their copies on each node. With $a_k$ denoting node availability,
+the data-ready time of copy $(i,k)$ is
+\begin{equation}
+ b_{ik}=\max_{j\in\Pred(i)}\min_{q\in\copies{j}}
+       \{f_{jq}+\tau_{qk}(d_{ji})\},
+ \label{eq:data_ready}
+\end{equation}
+where an empty predecessor maximum is zero. Start and finish times follow
+\begin{equation}
+ s_{ik}=\max\{a_k,b_{ik}\},\quad f_{ik}=s_{ik}+p_{ik},\quad a_k\leftarrow f_{ik}.
+ \label{eq:nominal_schedule}
+\end{equation}
+Task completion uses the earliest copy,
+\begin{equation}
+ F_i=\min_{k\in\copies{i}}f_{ik},\qquad \cbase=\max_i F_i.
+ \label{eq:nominal_makespan}
+\end{equation}
+Copies contribute their full modeled compute and communication charges even
+when another copy completes earlier. Task-order optimization and idle-gap
+insertion are not decision variables of the implemented evaluator.
+
+\subsection{Controllable Fault Scenarios}
+The default scenario set depends on the deployment:
+\begin{equation}
+ \faultset=\Omega^{\mathrm{copy}}(\chi)\cup
+ \Omega^{\mathrm{node}}(\chi)\cup\Omega^{\mathrm{link}}(\chi).
+ \label{eq:fault_set}
+\end{equation}
+It contains one copy-failure scenario for every deployed copy and one
+node-failure scenario for every occupied node. For each workflow edge whose
+effective producer and consumer execute on different nodes, it also includes
+an associated transfer-failure scenario. Effective nodes are determined by
+the earliest nominal copies in~\eqref{eq:nominal_makespan}; the default set
+does not enumerate every possible replica-to-replica transfer failure.
+
+Scenario times are prescribed from the nominal schedule. A copy fails at its
+planned finish time; a node fails at its first planned task start; a transfer
+fails at its planned completion. Only one such event is injected in a
+scenario. Correlated domain failures can be evaluated separately but are not
+part of~\eqref{eq:fault_set}. Thus, the term ``worst case'' below means the
+largest delay within this explicit, finite scenario set. It does not quantify
+over arbitrary failure times, all combinations of failures, or all physical
+communication events.
+
+\subsection{Deterministic Recovery Policy}
+For each $\omega\in\faultset$, the simulator performs a fault-aware forward
+replay in the same topological order. A directly affected active task with
+healthy copies completes according to
+\begin{equation}
+ F_i^{\omega}=\min_{k\in\mathcal H_i^{\omega}}
+ \max\{\widetilde f_{ik}^{\omega},
+       t_{\omega}+\delta_d+\delta_s+\delta_{\mathrm{sync}}\},
+ \label{eq:active_recovery}
+\end{equation}
+where $\mathcal H_i^{\omega}$ contains surviving copies and
+$\widetilde f_{ik}^{\omega}$ is the copy finish time in the replay.
+The constants represent detection, switching, and synchronization delay.
+
+When no usable copy remains, a healthy node $k'$ is selected for reexecution.
+It must satisfy residual footprint constraints and the policy's domain
+restrictions. If no such node exists, the scenario makespan is infinite.
+Otherwise,
+\begin{equation}
+\begin{split}
+ F_i^{\omega}={}&\max\{b_{ik'}^{\omega},a_{k'}^{\omega},
+                 t_{\omega}+\delta_d+\delta_r\}\\
+               &+q_{k'}+p_{ik'},
+\end{split}
+\label{eq:passive_recovery}
+\end{equation}
+where $\delta_r$ is replanning delay and $q_{k'}$ is a configured recovery
+queue estimate. Node availability $a_{k'}^{\omega}$ includes both healthy
+tasks already replayed and earlier reexecutions; omitting it would allow
+overlapping execution on a serialized node. Recovery input routing uses the
+effective predecessor retained by the replay. This differs from nominal
+input selection over all predecessor copies in~\eqref{eq:data_ready}.
+
+Recovery-node selection minimizes a configured heuristic:
+\begin{equation}
+\begin{split}
+ Q_i(k)={}&\theta_1q_k+
+ \theta_2\sum_{j\in\Pred(i)}\tau_{\kappa_j k}(d_{ji})
+ +\theta_3p_{ik}\\
+ &+\theta_4h_i(1-e^{-\lambda_kp_{ik}})
+ +\theta_5\rho_kp_{ik},
+\end{split}
+\label{eq:recovery_selection}
+\end{equation}
+where $\kappa_j$ is the recovered effective node of predecessor $j$, and
+$h_i\in[0,1]$ is structural criticality. Link failures introduce a configured
+wait and retransmission delay before affected input becomes available.
+This deterministic policy is part of the evaluator, not an optimal recovery
+schedule computed independently for each deployment.
+
+\subsection{Recovery SLA and Effective Budget}
+Let $C^{\omega}$ be the replay makespan. Define
+\begin{equation}
+ R_{\omega}=\pos{C^{\omega}-\cbase},\qquad
+ \rmax=\max_{\omega\in\faultset}R_{\omega}.
+ \label{eq:recovery_delay}
+\end{equation}
+A complete, capacity-feasible deployment must satisfy
+\begin{equation}
+ \cbase\leq D,\qquad
+ \rmax\leq\reff=\min\{R_{\mathrm{SLA}},D-\cbase\}.
+ \label{eq:sla}
+\end{equation}
+Its recovery safety margin is $M(\chi)=\reff-\rmax$.
+Figure~\ref{fig:budget} illustrates why nominal slack and recovery tolerance
+must be considered together.
+
+\begin{proposition}
+For a complete, capacity-feasible deployment and the specified scenario set,
+\eqref{eq:sla} holds if and only if $\cbase\leq D$, every
+$C^{\omega}\leq D$, and every $R_{\omega}\leq R_{\mathrm{SLA}}$.
+\end{proposition}
+\begin{IEEEproof}
+If~\eqref{eq:sla} holds, then
+$C^{\omega}\leq\cbase+\rmax\leq D$ and
+$R_{\omega}\leq\rmax\leq R_{\mathrm{SLA}}$.
+Conversely, $C^{\omega}\leq D$ and $\cbase\leq D$ imply
+$R_{\omega}\leq D-\cbase$. Combining this with the recovery SLA and taking
+the maximum over scenarios gives~\eqref{eq:sla}.
+\end{IEEEproof}
+
+\begin{figure}[!t]
+ \centering
+ \input{figures/recovery_budget}
+ \caption{Conceptual feasible timing region. The effective recovery limit is
+ the smaller of the declared window and the remaining deadline slack. This
+ diagram illustrates the model; it is not an experimental plot.}
+ \label{fig:budget}
+\end{figure}
+
+\subsection{Cost Objective}
+The monetary component of nominal deployment is
+\begin{align}
+ J_{\mathrm{comp}}&=\sum_i\sum_{k\in\copies{i}}\rho_kp_{ik},\\
+ J_{\mathrm{comm}}&=\gamma_c\sum_{(i,j)\in\edgeset}d_{ij}
+      \sum_{k\in\copies{i}}\sum_{\ell\in\copies{j}}\mathbf1[k\ne\ell],\\
+ J_{\mathrm{res}}&=\gamma_{\mathrm{res}}\sum_{i:y_i=0}\sigma_i.
+ \label{eq:cost_terms}
+\end{align}
+Communication billing counts all provisioned cross-node replica pairs, even
+though input readiness uses the fastest nominal predecessor copy. This is an
+explicit billing convention. Replica compute is already included in
+$J_{\mathrm{comp}}$ and is not added again as a separate backup charge.
+
+Let $J_0=J_{\mathrm{comp}}+J_{\mathrm{comm}}+J_{\mathrm{res}}$. The reported
+objective adds a recovery-delay proxy:
+\begin{equation}
+ J(\chi)=J_0(\chi)+\gamma_{\omega}\overline R(\chi),\qquad
+ \overline R=\frac{1}{|\faultset|}\sum_{\omega\in\faultset}R_{\omega}.
+ \label{eq:objective}
+\end{equation}
+For feasible deployments, all terms of this average are finite. It is a
+uniform scenario-average delay with a configured conversion weight, not a
+probability-weighted expected financial loss. We use it for feasible-solution
+comparison and do not interpret the simulator's finite-value proxy on
+unrecoverable deployments as an expectation.
+
+RLC-HFTSP minimizes~\eqref{eq:objective} over placement and protection modes
+subject to~\eqref{eq:replicas}--\eqref{eq:capacity}, nominal dependency
+evaluation, and~\eqref{eq:sla}. The recovery policy is fixed. The problem is
+a combinatorial deployment search; no claim of global optimality or an
+unproved complexity reduction is required by the proposed heuristic.

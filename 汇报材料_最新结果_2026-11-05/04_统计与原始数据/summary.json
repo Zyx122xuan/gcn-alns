@@ -1,0 +1,1348 @@
+{
+  "protocol_sha256": "0e20eb8f74bce033de5b4e881e319d667d1bf3c87bafb87b8e312f89b33a98cb",
+  "model_selection": {
+    "selected": "a2_off",
+    "reason": "higher validation feasibility",
+    "n_validation_runs_per_model": 75,
+    "feasible_on": 18,
+    "feasible_off": 23,
+    "n_common_feasible": 13,
+    "paired_relative_cost_on_minus_off": 0.046060832535752314,
+    "protocol_sha256": "0e20eb8f74bce033de5b4e881e319d667d1bf3c87bafb87b8e312f89b33a98cb",
+    "dataset_sha256": "65ef58b88787506ef62ab2bdfab7cce8316dcacf528a4d0fea4d82b213ba2e99",
+    "model_sha256": "6a4cf00246dd5de6d5ec034a4a245aee2cbe534a03cc3556b37930da696cf093",
+    "validation_outputs": {
+      "validation_a2_off.json": "22633e03be645e1f20ddde27966d2a5642556908c49e81c697c260a15379333b",
+      "validation_a2_on.json": "478d8149ed57dae30e5f85ed03a3180b2125ae93e6f5348d4076bc29795880ba",
+      "validation_alns.json": "714d59ec568b1d2950cee971849798eec126540a63c44ba2d3f68aae7d7fa5e0"
+    }
+  },
+  "run_counts": {
+    "ablation_Full": 750,
+    "ablation_wo_Deployment_Risk": 750,
+    "ablation_wo_Dynamic_Resched": 750,
+    "ablation_wo_Fault-Domain": 750,
+    "ablation_wo_Feasibility-First": 750,
+    "ablation_wo_GCN": 750,
+    "ablation_wo_GCN_Destroy": 750,
+    "ablation_wo_GCN_Mode": 750,
+    "ablation_wo_Hybrid_(all-active)": 750,
+    "ablation_wo_Hybrid_(all-passive)": 750,
+    "ablation_wo_Init-Diversify": 750,
+    "ablation_wo_Recovery_Penalty": 750,
+    "ablation_wo_Restart": 750,
+    "ablation_wo_Warm_Start": 750,
+    "budget_100": 900,
+    "budget_1000": 900,
+    "budget_200": 900,
+    "budget_50": 900,
+    "budget_500": 900,
+    "main_large": 450,
+    "main_medium": 1500,
+    "main_small": 2250,
+    "model_ab_a2_off": 450,
+    "model_ab_a2_on": 450,
+    "model_ab_alns": 450
+  },
+  "main": {
+    "large/ALNS": {
+      "n_runs": 75,
+      "n_instances": 15,
+      "feasible_macro": 0.6666666666666666,
+      "cost_total": 1997.4698359076635,
+      "safety_margin": 6.770710804399044,
+      "first_feasible_iter": 94.2,
+      "runtime": 15612.138849930663
+    },
+    "large/Critical-Path Backup": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 3785.2326955940493,
+      "safety_margin": 38.16595228377591,
+      "first_feasible_iter": null,
+      "runtime": 1.8774361666757613
+    },
+    "large/Criticality-Based Hybrid": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 3803.9386313607865,
+      "safety_margin": 31.125049353943325,
+      "first_feasible_iter": null,
+      "runtime": 1.9067961333319545
+    },
+    "large/Full-Proactive": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 2.0068003999845434
+    },
+    "large/GA-Placement": {
+      "n_runs": 75,
+      "n_instances": 15,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 367.5406746039788
+    },
+    "large/GCN-ALNS": {
+      "n_runs": 75,
+      "n_instances": 15,
+      "feasible_macro": 0.64,
+      "cost_total": 1938.2422836251997,
+      "safety_margin": 9.572208215093728,
+      "first_feasible_iter": 92.33333333333333,
+      "runtime": 16470.167180516008
+    },
+    "large/HEFT": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2091.8396849933274,
+      "safety_margin": 34.02050887625053,
+      "first_feasible_iter": null,
+      "runtime": 1.8831103133348128
+    },
+    "large/HFWPF": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 2381.8747360317243,
+      "safety_margin": 26.456427022021984,
+      "first_feasible_iter": null,
+      "runtime": 2.217722626682371
+    },
+    "large/No-FT": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2091.8396849933274,
+      "safety_margin": 34.02050887625054,
+      "first_feasible_iter": null,
+      "runtime": 1.8427744066653153
+    },
+    "large/PEFT": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2073.7025168596574,
+      "safety_margin": 32.41803211543353,
+      "first_feasible_iter": null,
+      "runtime": 104.99611057331785
+    },
+    "large/RA-MOMA": {
+      "n_runs": 75,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2089.0008891312855,
+      "safety_margin": 34.23790163816341,
+      "first_feasible_iter": null,
+      "runtime": 324.8181286360044
+    },
+    "large/RECR-D": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 1.4693581866566092
+    },
+    "large/Reactive-Only": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2114.1329113941883,
+      "safety_margin": 29.894494687920098,
+      "first_feasible_iter": null,
+      "runtime": 1.7788437533813217
+    },
+    "large/Reliability-Aware": {
+      "n_runs": 15,
+      "n_instances": 15,
+      "feasible_macro": 0.26666666666666666,
+      "cost_total": 2103.6776749335413,
+      "safety_margin": 34.59326524782967,
+      "first_feasible_iter": null,
+      "runtime": 1.7836086800321937
+    },
+    "medium/ALNS": {
+      "n_runs": 300,
+      "n_instances": 30,
+      "feasible_macro": 0.5433333333333333,
+      "cost_total": 612.673918443354,
+      "safety_margin": 2.1817042837168503,
+      "first_feasible_iter": 112.11656441717791,
+      "runtime": 600.9181788610061
+    },
+    "medium/Critical-Path Backup": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 739.555059917531,
+      "safety_margin": 0.3856271102695583,
+      "first_feasible_iter": null,
+      "runtime": 0.17133290000880758
+    },
+    "medium/Criticality-Based Hybrid": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.03333333333333333,
+      "cost_total": 1036.204532720893,
+      "safety_margin": 0.5495363985996526,
+      "first_feasible_iter": null,
+      "runtime": 0.17344714667027195
+    },
+    "medium/Full-Proactive": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.18047683665063233
+    },
+    "medium/GA-Placement": {
+      "n_runs": 300,
+      "n_instances": 30,
+      "feasible_macro": 0.006666666666666667,
+      "cost_total": 1565.0725935322312,
+      "safety_margin": 4.784388858764409,
+      "first_feasible_iter": null,
+      "runtime": 38.29950428166582
+    },
+    "medium/GCN-ALNS": {
+      "n_runs": 300,
+      "n_instances": 30,
+      "feasible_macro": 0.5766666666666667,
+      "cost_total": 601.4760093853662,
+      "safety_margin": 2.6110628915584577,
+      "first_feasible_iter": 132.10404624277456,
+      "runtime": 659.1233935989959
+    },
+    "medium/HEFT": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.16666666666666666,
+      "cost_total": 655.0812062393288,
+      "safety_margin": 3.4472807121431934,
+      "first_feasible_iter": null,
+      "runtime": 0.17904322003790488
+    },
+    "medium/HFWPF": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.1,
+      "cost_total": 690.2312022822285,
+      "safety_margin": 0.30313474656892875,
+      "first_feasible_iter": null,
+      "runtime": 0.20257436664930234
+    },
+    "medium/No-FT": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.16666666666666666,
+      "cost_total": 655.0812062393287,
+      "safety_margin": 3.4472807121431934,
+      "first_feasible_iter": null,
+      "runtime": 0.17958001667478432
+    },
+    "medium/PEFT": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.2,
+      "cost_total": 622.5467724573426,
+      "safety_margin": 7.025151470858911,
+      "first_feasible_iter": null,
+      "runtime": 2.844910369968663
+    },
+    "medium/RA-MOMA": {
+      "n_runs": 300,
+      "n_instances": 30,
+      "feasible_macro": 0.12000000000000001,
+      "cost_total": 611.5910615141604,
+      "safety_margin": 4.841427393270076,
+      "first_feasible_iter": null,
+      "runtime": 38.56919714433917
+    },
+    "medium/RECR-D": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.15693191665535172
+    },
+    "medium/Reactive-Only": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.16666666666666666,
+      "cost_total": 654.7961823192876,
+      "safety_margin": 6.756160785027978,
+      "first_feasible_iter": null,
+      "runtime": 0.1686014766494433
+    },
+    "medium/Reliability-Aware": {
+      "n_runs": 30,
+      "n_instances": 30,
+      "feasible_macro": 0.16666666666666666,
+      "cost_total": 672.535718304829,
+      "safety_margin": 8.515938387419743,
+      "first_feasible_iter": null,
+      "runtime": 0.16834706332689772
+    },
+    "small/ALNS": {
+      "n_runs": 450,
+      "n_instances": 45,
+      "feasible_macro": 0.30666666666666664,
+      "cost_total": 212.95965031856184,
+      "safety_margin": 0.9608021154737384,
+      "first_feasible_iter": 133.6086956521739,
+      "runtime": 23.513608006452625
+    },
+    "small/Critical-Path Backup": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.026580219984882407
+    },
+    "small/Criticality-Based Hybrid": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.026253473339602353
+    },
+    "small/Full-Proactive": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.02739575778444608
+    },
+    "small/GA-Placement": {
+      "n_runs": 450,
+      "n_instances": 45,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 202.33933897473324,
+      "safety_margin": 0.9454486944239296,
+      "first_feasible_iter": null,
+      "runtime": 5.241307470440968
+    },
+    "small/GCN-ALNS": {
+      "n_runs": 450,
+      "n_instances": 45,
+      "feasible_macro": 0.31333333333333335,
+      "cost_total": 209.07022336272334,
+      "safety_margin": 1.0366515177130677,
+      "first_feasible_iter": 124.66666666666667,
+      "runtime": 24.86259738111558
+    },
+    "small/HEFT": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 202.3393389747332,
+      "safety_margin": 0.9454486944239294,
+      "first_feasible_iter": null,
+      "runtime": 0.026930339991425474
+    },
+    "small/HFWPF": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.03305322667066422
+    },
+    "small/No-FT": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.06666666666666667,
+      "cost_total": 202.3393389747332,
+      "safety_margin": 0.9454486944239294,
+      "first_feasible_iter": null,
+      "runtime": 0.02512572665905787
+    },
+    "small/PEFT": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.022222222222222223,
+      "cost_total": 216.27606861809693,
+      "safety_margin": 0.08950246778566395,
+      "first_feasible_iter": null,
+      "runtime": 0.13597683778239622
+    },
+    "small/RA-MOMA": {
+      "n_runs": 450,
+      "n_instances": 45,
+      "feasible_macro": 0.006666666666666668,
+      "cost_total": 201.2436585993214,
+      "safety_margin": 0.47460925918134933,
+      "first_feasible_iter": null,
+      "runtime": 8.229132356670581
+    },
+    "small/RECR-D": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.031502515538078216
+    },
+    "small/Reactive-Only": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.044444444444444446,
+      "cost_total": 193.50104489451053,
+      "safety_margin": 3.29063079508523,
+      "first_feasible_iter": null,
+      "runtime": 0.025359748898901874
+    },
+    "small/Reliability-Aware": {
+      "n_runs": 45,
+      "n_instances": 45,
+      "feasible_macro": 0.0,
+      "cost_total": null,
+      "safety_margin": null,
+      "first_feasible_iter": null,
+      "runtime": 0.02567546888668504
+    }
+  },
+  "main_paired": {
+    "small/feasible": {
+      "n_instances": 45,
+      "n_paired_runs": 450,
+      "mean_difference": 0.6666666666666666,
+      "ci95": [
+        -3.7777777777777777,
+        4.888888888888889
+      ],
+      "p_t": 0.7620499841948762,
+      "p_wilcoxon": 0.8313799771067277
+    },
+    "small/cost_total": {
+      "n_instances": 16,
+      "n_paired_runs": 121,
+      "mean_difference": -1.5787465273988022,
+      "ci95": [
+        -3.475779128396246,
+        0.3526162851657294
+      ],
+      "p_t": 0.13855307261466154,
+      "p_wilcoxon": 0.17535400390625
+    },
+    "small/safety_margin": {
+      "n_instances": 16,
+      "n_paired_runs": 121,
+      "mean_difference": 0.10271572448288828,
+      "ci95": [
+        -0.016789897224354488,
+        0.22392002960939816
+      ],
+      "p_t": 0.1274386700262094,
+      "p_wilcoxon": 0.1590576171875
+    },
+    "small/first_feasible_iter": {
+      "n_instances": 16,
+      "n_paired_runs": 121,
+      "mean_difference": -44.44583333333334,
+      "ci95": [
+        -168.94703125,
+        65.99937499999993
+      ],
+      "p_t": 0.48750645252329194,
+      "p_wilcoxon": 0.916511907863894
+    },
+    "medium/feasible": {
+      "n_instances": 30,
+      "n_paired_runs": 300,
+      "mean_difference": 3.3333333333333335,
+      "ci95": [
+        -0.6666666666666666,
+        8.666666666666666
+      ],
+      "p_t": 0.18594705183517785,
+      "p_wilcoxon": 0.20082512269514552
+    },
+    "medium/cost_total": {
+      "n_instances": 19,
+      "n_paired_runs": 151,
+      "mean_difference": -2.9970035230256276,
+      "ci95": [
+        -3.9926367213142386,
+        -1.9629256860685902
+      ],
+      "p_t": 3.2768167864326845e-05,
+      "p_wilcoxon": 9.5367431640625e-05
+    },
+    "medium/safety_margin": {
+      "n_instances": 19,
+      "n_paired_runs": 151,
+      "mean_difference": 0.5907667170206345,
+      "ci95": [
+        -0.031243229923535173,
+        1.3653100543761754
+      ],
+      "p_t": 0.11562230256950805,
+      "p_wilcoxon": 0.3320655822753906
+    },
+    "medium/first_feasible_iter": {
+      "n_instances": 19,
+      "n_paired_runs": 151,
+      "mean_difference": -18.68947368421053,
+      "ci95": [
+        -118.87315789473686,
+        86.78276315789458
+      ],
+      "p_t": 0.7278271163228666,
+      "p_wilcoxon": 0.8752911852109797
+    },
+    "large/feasible": {
+      "n_instances": 15,
+      "n_paired_runs": 75,
+      "mean_difference": -2.6666666666666665,
+      "ci95": [
+        -12.033333333333331,
+        5.333333333333333
+      ],
+      "p_t": 0.581626836953901,
+      "p_wilcoxon": 0.7054569861112734
+    },
+    "large/cost_total": {
+      "n_instances": 11,
+      "n_paired_runs": 44,
+      "mean_difference": -2.5751217481510307,
+      "ci95": [
+        -3.42742902664657,
+        -1.7271652985700934
+      ],
+      "p_t": 0.00023618073353017695,
+      "p_wilcoxon": 0.0009765625
+    },
+    "large/safety_margin": {
+      "n_instances": 11,
+      "n_paired_runs": 44,
+      "mean_difference": 2.104321846925686,
+      "ci95": [
+        0.07382932204114416,
+        4.628444009553952
+      ],
+      "p_t": 0.10871580146864027,
+      "p_wilcoxon": 0.1474609375
+    },
+    "large/first_feasible_iter": {
+      "n_instances": 11,
+      "n_paired_runs": 44,
+      "mean_difference": -11.569696969696972,
+      "ci95": [
+        -116.84454545454544,
+        70.96272727272724
+      ],
+      "p_t": 0.8306204838468751,
+      "p_wilcoxon": 0.7353166906373405
+    }
+  },
+  "ablation_paired": {
+    "ablation_wo_Deployment_Risk": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 0.4,
+        "ci95": [
+          -1.4666666666666666,
+          2.269999999999982
+        ],
+        "p_t": 0.6886573143118208,
+        "p_wilcoxon": 0.5998917227480722,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 34,
+        "n_paired_runs": 279,
+        "mean_difference": 1.1543494542850876,
+        "ci95": [
+          0.3749743461610068,
+          1.8952647510890508
+        ],
+        "p_t": 0.009232256880481262,
+        "p_wilcoxon": 0.009070051251910627,
+        "p_t_holm": 0.08309031192433136
+      },
+      "safety_margin": {
+        "n_instances": 34,
+        "n_paired_runs": 279,
+        "mean_difference": 0.12606352411795693,
+        "ci95": [
+          -0.048932306338404986,
+          0.3196397942526761
+        ],
+        "p_t": 0.1739505242746601,
+        "p_wilcoxon": 0.2556125132832676,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 34,
+        "n_paired_runs": 279,
+        "mean_difference": 28.74313725490196,
+        "ci95": [
+          -23.053406862745103,
+          101.19617647058823
+        ],
+        "p_t": 0.37769180184867224,
+        "p_wilcoxon": 0.7156020623007808,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Dynamic_Resched": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 31.6,
+        "ci95": [
+          22.666666666666668,
+          41.46666666666667
+        ],
+        "p_t": 8.314185478019871e-09,
+        "p_wilcoxon": 1.640765507647537e-07,
+        "p_t_holm": 1.0808441121425832e-07
+      },
+      "cost_total": {
+        "n_instances": 10,
+        "n_paired_runs": 77,
+        "mean_difference": -3.524887986535404,
+        "ci95": [
+          -7.747754098418926,
+          0.9104535203028612
+        ],
+        "p_t": 0.1639293156353728,
+        "p_wilcoxon": 0.130859375,
+        "p_t_holm": 0.8601190128730685
+      },
+      "safety_margin": {
+        "n_instances": 10,
+        "n_paired_runs": 77,
+        "mean_difference": -0.32411035377000263,
+        "ci95": [
+          -1.7239057854530673,
+          0.8318767190451378
+        ],
+        "p_t": 0.6556060822222906,
+        "p_wilcoxon": 0.76953125,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 10,
+        "n_paired_runs": 77,
+        "mean_difference": -24.36111111111112,
+        "ci95": [
+          -160.7121111111111,
+          116.61672222222217
+        ],
+        "p_t": 0.7585339628163498,
+        "p_wilcoxon": 0.5146697234497355,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Fault-Domain": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 0.4,
+        "ci95": [
+          -0.9333333333333333,
+          2.0
+        ],
+        "p_t": 0.6048339011647242,
+        "p_wilcoxon": 0.7731112675004357,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 36,
+        "n_paired_runs": 292,
+        "mean_difference": 0.05429041842830496,
+        "ci95": [
+          -0.5209421775275468,
+          0.5324972352949263
+        ],
+        "p_t": 0.8434693086722337,
+        "p_wilcoxon": 0.3793746688088797,
+        "p_t_holm": 1.0
+      },
+      "safety_margin": {
+        "n_instances": 36,
+        "n_paired_runs": 292,
+        "mean_difference": -0.018132946265134904,
+        "ci95": [
+          -0.13299532807547948,
+          0.07299716942307659
+        ],
+        "p_t": 0.7378361297995877,
+        "p_wilcoxon": 0.9587607499379828,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 36,
+        "n_paired_runs": 292,
+        "mean_difference": -6.955687830687832,
+        "ci95": [
+          -23.461818783068782,
+          9.430205026455015
+        ],
+        "p_t": 0.40870825682370093,
+        "p_wilcoxon": 0.20262160771231197,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Feasibility-First": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 6.666666666666667,
+        "ci95": [
+          2.8,
+          10.666666666666666
+        ],
+        "p_t": 0.001494568432234392,
+        "p_wilcoxon": 0.0014249530063083948,
+        "p_t_holm": 0.017934821186812704
+      },
+      "cost_total": {
+        "n_instances": 31,
+        "n_paired_runs": 248,
+        "mean_difference": 0.4395387638446202,
+        "ci95": [
+          -0.4329592526356068,
+          1.3812747186153398
+        ],
+        "p_t": 0.3702220608833111,
+        "p_wilcoxon": 0.23554996872208356,
+        "p_t_holm": 1.0
+      },
+      "safety_margin": {
+        "n_instances": 31,
+        "n_paired_runs": 248,
+        "mean_difference": 0.05128214878043778,
+        "ci95": [
+          -0.11303565901388607,
+          0.22865312873677432
+        ],
+        "p_t": 0.5770099283210637,
+        "p_wilcoxon": 0.6378178967698778,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 31,
+        "n_paired_runs": 248,
+        "mean_difference": 37.268010752688184,
+        "ci95": [
+          -6.134408602150538,
+          83.67245295698922
+        ],
+        "p_t": 0.12871802517046269,
+        "p_wilcoxon": 0.30519775344657996,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_GCN": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 1.7333333333333334,
+        "ci95": [
+          -1.4666666666666666,
+          4.933333333333334
+        ],
+        "p_t": 0.2931447146617161,
+        "p_wilcoxon": 0.29005230167208373,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 35,
+        "n_paired_runs": 272,
+        "mean_difference": -2.348657467881936,
+        "ci95": [
+          -3.420433286959564,
+          -1.2945261414843796
+        ],
+        "p_t": 0.00015857094201314053,
+        "p_wilcoxon": 0.0003297168295830488,
+        "p_t_holm": 0.0015857094201314052
+      },
+      "safety_margin": {
+        "n_instances": 35,
+        "n_paired_runs": 272,
+        "mean_difference": 0.367657691860522,
+        "ci95": [
+          0.02000302086585604,
+          0.788728931477895
+        ],
+        "p_t": 0.0721884359476815,
+        "p_wilcoxon": 0.1683733132085763,
+        "p_t_holm": 0.721884359476815
+      },
+      "first_feasible_iter": {
+        "n_instances": 35,
+        "n_paired_runs": 272,
+        "mean_difference": -30.46380952380953,
+        "ci95": [
+          -108.7457142857143,
+          46.97814285714286
+        ],
+        "p_t": 0.45078448046840014,
+        "p_wilcoxon": 0.9616763959455763,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_GCN_Destroy": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": -0.4,
+        "ci95": [
+          -1.8666666666666667,
+          0.8
+        ],
+        "p_t": 0.5520493641435078,
+        "p_wilcoxon": 0.6093947909288484,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 35,
+        "n_paired_runs": 278,
+        "mean_difference": -1.283295439379472,
+        "ci95": [
+          -2.290490144916649,
+          -0.11799406542303532
+        ],
+        "p_t": 0.022914402821910703,
+        "p_wilcoxon": 0.005648916761856526,
+        "p_t_holm": 0.18331522257528562
+      },
+      "safety_margin": {
+        "n_instances": 35,
+        "n_paired_runs": 278,
+        "mean_difference": 0.17703977046187422,
+        "ci95": [
+          -0.19435579833063607,
+          0.6343100490510767
+        ],
+        "p_t": 0.41442035478576256,
+        "p_wilcoxon": 0.5544616600964218,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 35,
+        "n_paired_runs": 278,
+        "mean_difference": 13.561292517006802,
+        "ci95": [
+          -24.979840136054428,
+          71.34085374149659
+        ],
+        "p_t": 0.5818667118923326,
+        "p_wilcoxon": 0.4935097866559647,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_GCN_Mode": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 1.7333333333333334,
+        "ci95": [
+          -1.2,
+          4.8
+        ],
+        "p_t": 0.258771656916317,
+        "p_wilcoxon": 0.3643599852740378,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 34,
+        "n_paired_runs": 275,
+        "mean_difference": -0.952033456454115,
+        "ci95": [
+          -1.9942286955373494,
+          -0.055959212283620476
+        ],
+        "p_t": 0.06222188055894551,
+        "p_wilcoxon": 0.21882562656238658,
+        "p_t_holm": 0.43555316391261856
+      },
+      "safety_margin": {
+        "n_instances": 34,
+        "n_paired_runs": 275,
+        "mean_difference": 0.07620401432616335,
+        "ci95": [
+          -0.06611537371760137,
+          0.2282840172101755
+        ],
+        "p_t": 0.31523509196073374,
+        "p_wilcoxon": 0.26450786232203294,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 34,
+        "n_paired_runs": 275,
+        "mean_difference": -23.732026143790854,
+        "ci95": [
+          -71.56363562091502,
+          21.840285947712335
+        ],
+        "p_t": 0.338953201451191,
+        "p_wilcoxon": 0.2360189360536452,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Hybrid_(all-active)": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": -0.6666666666666666,
+        "ci95": [
+          -3.8666666666666667,
+          2.8
+        ],
+        "p_t": 0.6980920491545539,
+        "p_wilcoxon": 0.5515150900118735,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 35,
+        "n_paired_runs": 277,
+        "mean_difference": -7.1736406033225535,
+        "ci95": [
+          -9.548963360695105,
+          -4.856370277885126
+        ],
+        "p_t": 8.570628217616356e-07,
+        "p_wilcoxon": 6.222398951649666e-08,
+        "p_t_holm": 1.0284753861139627e-05
+      },
+      "safety_margin": {
+        "n_instances": 35,
+        "n_paired_runs": 277,
+        "mean_difference": -0.7461095163561774,
+        "ci95": [
+          -1.529775345132727,
+          -0.1741408902038343
+        ],
+        "p_t": 0.04504915771239343,
+        "p_wilcoxon": 0.09898104390410449,
+        "p_t_holm": 0.5405898925487211
+      },
+      "first_feasible_iter": {
+        "n_instances": 35,
+        "n_paired_runs": 277,
+        "mean_difference": 11.707210884353742,
+        "ci95": [
+          -38.14519047619048,
+          59.58496598639456
+        ],
+        "p_t": 0.6425983836268883,
+        "p_wilcoxon": 0.5805544804163953,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Hybrid_(all-passive)": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 6.133333333333334,
+        "ci95": [
+          2.1333333333333333,
+          10.533333333333333
+        ],
+        "p_t": 0.004871939968519786,
+        "p_wilcoxon": 0.004342417873593631,
+        "p_t_holm": 0.04871939968519785
+      },
+      "cost_total": {
+        "n_instances": 31,
+        "n_paired_runs": 253,
+        "mean_difference": 1.2760802915793614,
+        "ci95": [
+          -0.4226055577636828,
+          2.9915190404057435
+        ],
+        "p_t": 0.14335316881217808,
+        "p_wilcoxon": 0.07864666027410346,
+        "p_t_holm": 0.8601190128730685
+      },
+      "safety_margin": {
+        "n_instances": 31,
+        "n_paired_runs": 253,
+        "mean_difference": 0.14038567628117302,
+        "ci95": [
+          0.006657220685862556,
+          0.2753560381326532
+        ],
+        "p_t": 0.05013707568568836,
+        "p_wilcoxon": 0.03000989131308078,
+        "p_t_holm": 0.551507832542572
+      },
+      "first_feasible_iter": {
+        "n_instances": 31,
+        "n_paired_runs": 253,
+        "mean_difference": 10.09731182795699,
+        "ci95": [
+          -57.94362903225806,
+          89.54848118279565
+        ],
+        "p_t": 0.7906316180349932,
+        "p_wilcoxon": 0.3759797524564171,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Init-Diversify": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 0.0,
+        "ci95": [
+          -2.1366666666666663,
+          2.1333333333333333
+        ],
+        "p_t": 1.0,
+        "p_wilcoxon": 0.9435751873094886,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 39,
+        "n_paired_runs": 289,
+        "mean_difference": 0.2687839341711138,
+        "ci95": [
+          -0.19443303404217147,
+          0.7735327474463253
+        ],
+        "p_t": 0.2735716700653054,
+        "p_wilcoxon": 0.5699338801555559,
+        "p_t_holm": 1.0
+      },
+      "safety_margin": {
+        "n_instances": 39,
+        "n_paired_runs": 289,
+        "mean_difference": -0.06425380180021462,
+        "ci95": [
+          -0.1979268375310701,
+          0.06297686332001877
+        ],
+        "p_t": 0.3534514001976088,
+        "p_wilcoxon": 0.5202133776633694,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 39,
+        "n_paired_runs": 289,
+        "mean_difference": 37.42692307692308,
+        "ci95": [
+          -16.924935897435898,
+          110.66206730769228
+        ],
+        "p_t": 0.271088140426573,
+        "p_wilcoxon": 0.8838460571465129,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Recovery_Penalty": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_t": 1.0,
+        "p_wilcoxon": 1.0,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 41,
+        "n_paired_runs": 314,
+        "mean_difference": -2.484004288561439,
+        "ci95": [
+          -3.2891380664673098,
+          -1.7510451544932055
+        ],
+        "p_t": 2.6346027583958414e-07,
+        "p_wilcoxon": 1.305879077228879e-06,
+        "p_t_holm": 3.424983585914594e-06
+      },
+      "safety_margin": {
+        "n_instances": 41,
+        "n_paired_runs": 314,
+        "mean_difference": -0.1901706666896729,
+        "ci95": [
+          -0.3681532261034976,
+          -0.03726549842567835
+        ],
+        "p_t": 0.0337552715104807,
+        "p_wilcoxon": 0.037511670521472626,
+        "p_t_holm": 0.4388185296362491
+      },
+      "first_feasible_iter": {
+        "n_instances": 41,
+        "n_paired_runs": 314,
+        "mean_difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_t": 1.0,
+        "p_wilcoxon": 1.0,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Restart": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": 3.6,
+        "ci95": [
+          1.6,
+          5.866666666666666
+        ],
+        "p_t": 0.002173821751078969,
+        "p_wilcoxon": 0.0007527454282757943,
+        "p_t_holm": 0.023912039261868658
+      },
+      "cost_total": {
+        "n_instances": 38,
+        "n_paired_runs": 287,
+        "mean_difference": -0.5839175929139704,
+        "ci95": [
+          -0.8399960424318711,
+          -0.34826596379828606
+        ],
+        "p_t": 7.108522012262862e-05,
+        "p_wilcoxon": 1.1805397710215685e-05,
+        "p_t_holm": 0.0007819374213489149
+      },
+      "safety_margin": {
+        "n_instances": 38,
+        "n_paired_runs": 287,
+        "mean_difference": -0.02096889102153353,
+        "ci95": [
+          -0.14992716446453425,
+          0.11994032988578396
+        ],
+        "p_t": 0.7659842424902767,
+        "p_wilcoxon": 0.809337503179622,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 38,
+        "n_paired_runs": 287,
+        "mean_difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_t": 1.0,
+        "p_wilcoxon": 1.0,
+        "p_t_holm": 1.0
+      }
+    },
+    "ablation_wo_Warm_Start": {
+      "feasible": {
+        "n_instances": 75,
+        "n_paired_runs": 750,
+        "mean_difference": -0.5333333333333333,
+        "ci95": [
+          -1.3333333333333333,
+          0.13333333333333333
+        ],
+        "p_t": 0.15868804754236907,
+        "p_wilcoxon": 0.15729920705028516,
+        "p_t_holm": 1.0
+      },
+      "cost_total": {
+        "n_instances": 38,
+        "n_paired_runs": 307,
+        "mean_difference": 0.18680801280345802,
+        "ci95": [
+          -0.3401181104372518,
+          0.8532856249734155
+        ],
+        "p_t": 0.5525194230810746,
+        "p_wilcoxon": 0.8067663226228976,
+        "p_t_holm": 1.0
+      },
+      "safety_margin": {
+        "n_instances": 38,
+        "n_paired_runs": 307,
+        "mean_difference": 0.09254107176501215,
+        "ci95": [
+          -0.12957735422830002,
+          0.31453065498918753
+        ],
+        "p_t": 0.42782239754592466,
+        "p_wilcoxon": 0.221330082993901,
+        "p_t_holm": 1.0
+      },
+      "first_feasible_iter": {
+        "n_instances": 38,
+        "n_paired_runs": 307,
+        "mean_difference": 1.739473684210526,
+        "ci95": [
+          -9.513552631578948,
+          12.29374999999999
+        ],
+        "p_t": 0.7466928159597083,
+        "p_wilcoxon": 0.3328797545683888,
+        "p_t_holm": 1.0
+      }
+    }
+  },
+  "other_studies": {
+    "budget_100": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.22666666666666666,
+        "cost_total": 215.10821874905614,
+        "safety_margin": 1.0847725263107229,
+        "first_feasible_iter": 13.53921568627451,
+        "runtime": 2.1126444877797943
+      },
+      "GCN-ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.23111111111111107,
+        "cost_total": 211.66360791085643,
+        "safety_margin": 1.1875091466654353,
+        "first_feasible_iter": 18.951923076923077,
+        "runtime": 2.3983631033295145
+      }
+    },
+    "budget_1000": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.30666666666666664,
+        "cost_total": 212.95965031856184,
+        "safety_margin": 0.9608021154737384,
+        "first_feasible_iter": 133.6086956521739,
+        "runtime": 23.501945999329394
+      },
+      "GCN-ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.31333333333333335,
+        "cost_total": 209.07022336272334,
+        "safety_margin": 1.0366515177130677,
+        "first_feasible_iter": 124.66666666666667,
+        "runtime": 24.8404999562296
+      }
+    },
+    "budget_200": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.2488888888888889,
+        "cost_total": 213.39070026203703,
+        "safety_margin": 1.0562866881974018,
+        "first_feasible_iter": 24.705357142857142,
+        "runtime": 4.234001450885295
+      },
+      "GCN-ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.26,
+        "cost_total": 210.5436216550257,
+        "safety_margin": 1.1564972612124935,
+        "first_feasible_iter": 31.102564102564102,
+        "runtime": 4.687305003556733
+      }
+    },
+    "budget_50": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.2111111111111111,
+        "cost_total": 217.99250161571274,
+        "safety_margin": 1.3013759076258482,
+        "first_feasible_iter": 8.74736842105263,
+        "runtime": 1.110377170883326
+      },
+      "GCN-ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.19777777777777775,
+        "cost_total": 216.05898068175088,
+        "safety_margin": 1.2663822497366337,
+        "first_feasible_iter": 10.146067415730338,
+        "runtime": 1.263900188212283
+      }
+    },
+    "budget_500": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.26666666666666666,
+        "cost_total": 210.77124348839453,
+        "safety_margin": 0.9707327926292825,
+        "first_feasible_iter": 46.06666666666667,
+        "runtime": 11.544437048227216
+      },
+      "GCN-ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.2866666666666666,
+        "cost_total": 209.5304417966154,
+        "safety_margin": 1.1591437769180293,
+        "first_feasible_iter": 64.73643410852713,
+        "runtime": 12.225200292889753
+      }
+    },
+    "model_ab_a2_off": {
+      "GCN-ALNS (a2_off)": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.31333333333333335,
+        "cost_total": 209.07022336272334,
+        "safety_margin": 1.0366515177130677,
+        "first_feasible_iter": 124.66666666666667,
+        "runtime": 24.814932934439533
+      }
+    },
+    "model_ab_a2_on": {
+      "GCN-ALNS (a2_on)": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.35111111111111115,
+        "cost_total": 212.73365479520294,
+        "safety_margin": 0.989847357517848,
+        "first_feasible_iter": 130.0632911392405,
+        "runtime": 25.109930753779803
+      }
+    },
+    "model_ab_alns": {
+      "ALNS": {
+        "n_runs": 450,
+        "n_instances": 45,
+        "feasible_macro": 0.30666666666666664,
+        "cost_total": 212.95965031856184,
+        "safety_margin": 0.9608021154737384,
+        "first_feasible_iter": 133.6086956521739,
+        "runtime": 23.470962994214045
+      }
+    }
+  }
+}

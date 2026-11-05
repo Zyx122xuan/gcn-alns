@@ -1,0 +1,210 @@
+\section{Experimental Design}
+\label{sec:experiments}
+\input{tables/settings}
+\subsection{Research Questions}
+The independent evaluation addresses three questions.
+\begin{itemize}
+ \item \textbf{RQ1:} How do feasibility, feasible-solution cost, and recovery
+ margin compare with nonlearned ALNS and the baseline suite?
+ \item \textbf{RQ2:} Which search mechanisms and protection-policy choices
+ account for observed changes, and are those changes supported by paired
+ analysis?
+ \item \textbf{RQ3:} How does learned guidance affect solution quality under
+ different iteration budgets, and how does iteration efficiency differ from
+ total elapsed time?
+\end{itemize}
+
+\subsection{Synthetic Instances and SLA Calibration}
+Instances combine five custom DAG-shape generators named after Montage,
+CyberShake, Epigenomics, LIGO, and SIPHT workflow families. Runtimes follow a
+lognormal distribution with log-space mean 2 and standard deviation 0.7,
+while dependency data volumes are sampled from a
+configured range of 5--200 MB. These generators approximate broad structural
+patterns; they are not real application executions or outputs of the
+WfCommons generator. The current synthetic path assigns every task one unit
+of CPU demand and one unit of memory demand. Workload heterogeneity therefore
+comes primarily from runtime and dependency structure, while resource
+capacity varies across nodes.
+
+Synthetic machines draw CPU capacities from $\{8,16,32,64,96\}$ and memory
+capacities from $\{16,32,64,128,256\}$. The medium-load setting samples
+utilization between 0.30 and 0.60. Quality-based tier assignment combines
+capacity, utilization, and variation, followed by tier-dependent prices and
+failure-rate parameters. Links use tier-pair latency/bandwidth tables with
+deterministic multiplicative perturbations. Fault domains are synthetic
+hash-based groups, not observed racks or power domains. Resource data are
+cluster-trace-inspired rather than measurements extracted from a production
+trace.
+
+For each instance, a passive HEFT-style reference defines
+$T_{\mathrm{ref}}$. Deadline and recovery window are scaled as shown in
+Table~\ref{tab:sla}. Small, medium, and large instances contain 50, 150, and
+500 tasks and the same number of resource nodes, respectively. The held-out
+set contains 45, 30, and 15 instances across these scales, for 90 instances
+in total. Each SLA setting has 30 test instances across all scales. We do not
+retune the SLA parameters after observing the test-set feasibility rates.
+
+\subsection{Independent Learning and Model Selection}
+The input protocol fixes 60 learning candidates and 15 validation candidates
+before teacher generation. Workflow-content and resource-snapshot hashes
+prevent cross-role reuse, including renamed or SLA-modified copies. The
+teacher runs only on these inputs and retains an instance only when it finds
+at least one verifier-feasible demonstration. In the completed rebuild, 26
+training and four validation instances contributed demonstrations. Failed
+teacher instances remain assigned to their original roles; they are not
+replaced by solver-test instances.
+
+Crucially, supervised-label availability does not redefine the validation or
+test population. All 15 original validation instances are retained for
+end-to-end solver comparison, including those for which the teacher found
+no feasible demonstration. The 90 test instances use separate random-seed
+blocks and are never supplied to the teacher or training loss.
+
+Candidate training configurations use the same frozen teacher dataset.
+Validation loss controls early stopping.
+End-to-end validation uses five repeated solver seeds per instance, with
+1000 ALNS iterations as the maximum budget. The registered model-selection
+rule first prefers more feasible validation runs. If feasibility ties, it
+compares relative cost on identically paired runs where both candidates are
+feasible; a remaining tie follows the preregistered candidate priority.
+All other search
+parameters, including the insertion weight of 0.5, remain fixed.
+
+Validation selected the placement-only checkpoint, with the heuristic
+protection rule described in Section~\ref{sec:method}. This single checkpoint
+is frozen before testing and used throughout the main, component, and budget
+studies. Alternative checkpoints and their diagnostic comparisons are
+archived as development records and do not redefine the final model using
+test-set outcomes.
+
+\subsection{Baseline Configurations}
+\label{sec:baselines}
+The suite contains 14 solver labels. Eight built-in labels represent
+HEFT-style placement, PEFT-style placement, no-fault-aware placement,
+reactive-only placement, full active replication, critical-path replication,
+criticality-based hybrid protection, and reliability-aware placement.
+HEFT and No-FT share the same passive placement logic in this implementation
+and should not be counted as independent algorithmic evidence. Every
+returned deployment is evaluated with the same nominal scheduler, recovery
+policy, and cost model.
+
+Four additional configurations are external references:
+\begin{itemize}
+ \item \textbf{RECR-D adaptation:} Retains resource penalties, distributed
+ sub-deadlines, and bounded replica promotion. Energy terms are removed;
+ placement is performed in the evaluator's canonical order to avoid a
+ mismatch between planned and replayed schedules. Recovery-budget feedback
+ is mapped to the common simulator rather than the source reliability model.
+ \item \textbf{HFWPF adaptation:} Retains the slack-based choice between
+ replication and reexecution and a capacity-biased placement rule. The
+ source method's execution-time uncertainty, elastic virtual machines, and
+ online adaptation are not reproduced.
+ \item \textbf{GA-Placement:} Uses a conventional genetic search over placement
+ and protection choices as a generic evolutionary reference. It is not a
+ reproduction of a genetic-programming hyper-heuristic.
+ \item \textbf{RA-MOMA adaptation:} Uses a multi-objective memetic search with
+ HEFT-style initialization and problem-specific neighborhoods. The resource
+ model is fixed, order genes are omitted, and source reliability and billing
+ terms are mapped to the evaluator's cost and recovery-risk objectives.
+\end{itemize}
+These are explicitly static adaptations, not bit-exact reproductions of
+the cited systems \cite{taghinezhad2025recrd,ren2026hfwpf,qin2023ramoma}.
+Results under this common gate assess the adapted configurations on
+RLC-HFTSP; they do not rank the source papers on their original tasks.
+Nonlearned ALNS uses the same search framework as GCN-ALNS, with all learned
+hooks disabled.
+
+\subsection{Registered Studies and Computational Budgets}
+The main comparison uses ten repeated seeds for stochastic methods on small
+and medium instances and five on large instances. The maximum ALNS budgets
+are 1000 and 800 iterations, respectively. Deterministic references run once
+per instance. The main comparison therefore contains 4200 planned records.
+The repeated runs measure optimizer variability on fixed instances; they are
+not additional independent workflow samples. Different algorithm families
+retain their registered internal search parameters, so the main study is
+not a matched-wall-clock comparison across all methods.
+
+The component study uses small and medium test instances, ten repeated
+seeds, and 1000 iterations. Its 14 configurations include the complete solver
+and removals of learned guidance, warm start, learned replica ranking,
+learned destruction, feasibility-first scoring, restarts, initialization
+diversity, recovery penalty, deployment risk, domain separation, dynamic
+rescheduling, and two repair-mode preference variants. This produces
+10\,500 planned records.
+
+These changes belong to different categories. Disabling dynamic rescheduling
+restricts reexecution to the task's original domains and changes the recovery
+policy; it does not eliminate recovery. Removing domain separation relaxes
+an admissibility constraint and is not a pure search-operator ablation.
+The variants originally labelled all-active and all-passive apply a mode
+preference when repairing removed tasks. Initialization and other repair
+actions can retain or change modes, so these configurations do not impose a
+strict homogeneous policy on every task. Their results describe repair-mode
+preferences. A clean comparison of strictly all-active, all-passive, and
+hybrid deployments requires globally constrained, separately versioned runs.
+These changes must be distinguished from removing learned ranking or a search
+restart.
+
+The budget study compares ALNS and GCN-ALNS on small instances at 50, 100,
+200, 500, and 1000 iterations, with ten seeds each, yielding 4500 records.
+These three studies contain 19\,200 planned records. Their scopes and budgets
+are fixed before inspecting the complete test results. Additional
+training-configuration diagnostics are archived separately; they are not an
+independent research question or a basis for replacing the frozen checkpoint.
+
+\subsection{Metrics and Statistical Analysis}
+Primary metrics are SLA-feasible rate, feasible-deployment cost,
+$M(\chi)=\reff-\rmax$, and the iteration at which the solver first records a
+verified feasible deployment. We also record full solver runtime, final
+verification time, one-time learned inference time, replica usage, and
+scenario-set size. Reported verification time for an individual result is
+the final evaluation call; it does not account for every verification call
+inside ALNS. It cannot alone identify the full solver's dominant runtime
+component.
+
+Feasible rate is first averaged over repeated seeds for each instance, then
+macro-averaged over instances. For the main descriptive cost table, feasible
+seeds are first averaged within each instance, then instances with at least
+one feasible run receive equal weight. These method-specific cost means are
+descriptive because their successful instance sets can differ. Comparative
+cost, recovery margin, and first-feasible iteration are paired by the same
+instance and seed and restricted to runs where both methods succeed; unknown
+first-feasible iteration markers are excluded. Pairwise differences are then
+aggregated within instances so the workflow instance, rather than every
+optimizer seed, is the independent statistical unit.
+
+We report paired mean differences, 95\% instance-bootstrap intervals with
+2000 resamples, paired $t$-tests, and Wilcoxon signed-rank tests where defined.
+For the component comparisons, Holm adjustment is performed separately for
+each reported metric family. A feasibility increase, a lower cost among
+different successful subsets, and a higher conditional safety margin are
+not interchangeable findings. Likewise, fewer iterations to feasibility
+must not be presented as a directly measured reduction in wall-clock
+time-to-feasibility.
+
+\subsection{Execution Environment and Reproducibility}
+The current run uses Windows 11, Python 3.12.4, NumPy 1.26.4, and PyTorch
+2.5.1 with CUDA 12.1 on one NVIDIA A40 GPU. The host exposes 32 logical CPU
+processors. GPU execution is used for training; per-instance score inference
+in the scheduling pipeline is performed on CPU. Independent solver runs use
+eight worker processes for ordinary stages and 12 for the large main study,
+with per-worker numerical-library threads limited to one.
+
+The insertion weights in~\eqref{eq:insertion} are
+$(1,0.5,1,2,0.5,0.5)$; deadline and recovery penalties are 200 and 100.
+ALNS uses initial temperature 1, cooling factor 0.995, a 50-iteration
+adaptation segment, reaction factor 0.1, maximum removal fraction 0.2,
+and a 300-iteration stagnation threshold with at most two restarts.
+The recovery-node weights in~\eqref{eq:recovery_selection} are
+$(1,1,1,0.5,0.2)$. Communication, passive reserve, and recovery-proxy
+weights are 0.01, 0.1, and 1, respectively. Tier base failure-rate
+parameters are $10^{-6}$, $5\times10^{-6}$, and $10^{-5}$ for cloud,
+edge, and device nodes, with configured load/variation adjustments.
+Costs are normalized model units rather than measured currency charges.
+
+Each experiment stores configuration, source-code, model, and instance
+fingerprints together with the returned deployment and protection decisions.
+Resume checks reject incompatible versions. The source snapshot includes
+the correction that serializes reexecutions on recovery nodes and enforces
+CPU/memory footprint checks at the final gate. Earlier results produced by
+the previous verifier are excluded from the independent comparisons.

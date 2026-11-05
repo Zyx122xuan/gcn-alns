@@ -1,0 +1,90 @@
+\section{Introduction}
+\label{sec:introduction}
+\IEEEPARstart{W}{orkflow} applications express dependencies among processing
+tasks and expose opportunities for parallel execution on heterogeneous
+resources. Deploying such applications across cloud, edge, and device tiers
+creates a placement problem in which execution speed, communication delay,
+resource availability, and monetary cost interact. A low-cost node can be an
+attractive execution target but a poor recovery destination. Similarly, adding
+replicas can reduce the need for reexecution while increasing compute charges,
+communication charges, and contention for limited deployment capacity.
+
+An application deadline alone does not describe the disruption that a user is
+willing to tolerate. Consider a workflow with deadline $D$, nominal makespan
+$\cbase$, and an additional delay $R$ caused by recovery. Meeting the deadline
+after a failure requires $\cbase+R\leq D$. A separate recovery service-level
+agreement (SLA) may also require $R\leq R_{\mathrm{SLA}}$. Consequently, the
+deployment has only
+\begin{equation}
+  \reff=\min\{R_{\mathrm{SLA}},D-\cbase\}
+  \label{eq:intro_budget}
+\end{equation}
+seconds of effective recovery budget. A cost-minimizing deployment that uses
+almost all of $D$ for nominal execution can violate the recovery requirement
+even when the declared recovery window appears generous. Conversely, a fast
+nominal schedule does not guarantee inexpensive or rapid recovery when its
+tasks depend on vulnerable resources or communication paths.
+
+This coupling motivates \emph{joint} placement and fault-tolerance decisions.
+Active replication runs multiple task copies and allows a surviving copy to
+complete the task. Passive protection deploys one copy and reexecutes affected
+work after failure. Choosing a single strategy for every task overlooks
+differences in task criticality, slack, communication demand, and replica
+placement opportunities. The scheduling decision must therefore account for
+both the nominal deployment and the recovery behavior induced by that
+deployment.
+
+Classical heterogeneous workflow heuristics, including HEFT and PEFT, provide
+useful starting points for makespan-oriented scheduling
+\cite{topcuoglu2002heft,arabnejad2014peft}. Reliability-aware and hybrid
+fault-tolerant methods introduce replication or reexecution decisions
+\cite{qin2023ramoma,taghinezhad2025recrd,ren2026hfwpf}. Their original objectives
+and system assumptions, however, are not identical to a joint deadline and
+recovery-delay constraint. A comparison must distinguish an algorithmic
+design from the simulator, resource model, and failure model under which it is
+evaluated. In particular, a common feasibility checker is necessary for
+consistent comparisons, but sharing a checker does not by itself make
+adaptations equivalent to their original algorithms.
+
+We study a static, single-workflow deployment problem on a fixed computing
+continuum. Tasks are placed under cumulative CPU and memory deployment
+constraints, active replicas are separated by fault domain during
+construction, and a deterministic recovery policy handles an explicitly
+enumerated scenario set. We refer to this formulation as the
+\emph{recovery-latency-constrained hybrid fault-tolerant scheduling problem}
+(RLC-HFTSP). Its scenario model fixes failure locations and times; the
+resulting feasibility claim applies to those scenarios rather than every
+possible failure time in a physical system.
+
+To solve this problem, we develop GCN-ALNS. Adaptive large neighborhood search
+(ALNS) provides the combinatorial search framework
+\cite{ropke2006alns,pisinger2007general}. Before a verified feasible deployment
+is available, the search prioritizes estimated constraint violations. After
+feasibility is established, it emphasizes cost. A graph convolutional network
+(GCN) learns placement preferences from feasible solver demonstrations
+\cite{kipf2017gcn}. Importantly, the GCN encodes a resource graph; workflow
+structure enters through task features. Its scores guide search actions, while
+the recovery verifier retains responsibility for certifying incumbents.
+
+The contributions are as follows.
+\begin{itemize}
+  \item We formulate a deployment-dependent recovery budget that links nominal
+  completion, a recovery SLA, and the largest additional delay over a finite
+  fault-scenario set. The model specifies compute, communication, passive
+  reserve, and recovery-delay cost components without double-counting replica
+  compute cost.
+  \item We design a feasibility-first ALNS solver with diversified
+  initialization, adaptive operators, and stagnation restarts, and integrate
+  supervised resource-graph guidance into construction, insertion, and
+  destruction, including preference-based ranking of replica destinations.
+  \item We establish an independent evaluation protocol that separates
+  teacher generation, model selection, and held-out testing. It includes
+  shared scenario verification, documented baseline adaptations, paired
+  instance-level analysis, and versioned deployment artifacts.
+\end{itemize}
+
+The empirical questions concern whether learned guidance changes feasible
+solution quality and search effort, which mechanisms account for those
+changes, and how these effects vary with workflow scale and SLA tightness.
+The manuscript does not assume that the complete solver must dominate every
+alternative on every metric.

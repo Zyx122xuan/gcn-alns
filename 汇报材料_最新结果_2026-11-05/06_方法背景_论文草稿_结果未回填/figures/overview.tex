@@ -1,0 +1,22 @@
+\resizebox{0.97\textwidth}{!}{%
+\begin{tikzpicture}[
+ box/.style={draw,rounded corners=1pt,align=center,text width=3.8cm,
+             minimum height=1.05cm,inner sep=5pt},
+ arr/.style={-{Stealth[length=2.2mm]},thick},
+ font=\small]
+ \node[box] (train) at (0,2.3) {Fixed train/validation inputs\\No solver-test demonstrations};
+ \node[box] (teacher) at (5.1,2.3) {Teacher panel and full verifier\\Feasible placement labels};
+ \node[box] (model) at (10.2,2.3) {Resource GCN and task MLP\\Train then freeze scorer};
+ \node[box] (test) at (0,0) {Held-out workflow and resources\\Independent evaluation input};
+ \node[box] (search) at (5.1,0) {GCN-guided ALNS\\Quick score, SA, restarts};
+ \node[box] (verify) at (10.2,0) {Full scenario verification\\Verified feasible solution register};
+ \draw[arr] (train)--(teacher);
+ \draw[arr] (teacher)--(model);
+ \draw[arr] (test)--(search);
+ \draw[arr] (search)--node[above,font=\footnotesize]{promising candidates}(verify);
+ \draw[arr,dashed] (model.south) to[out=-90,in=90]
+    node[above left,font=\footnotesize,align=center]{cached pair\\preferences}(search.north);
+ \draw[arr] (search.south) to[out=-115,in=-65,looseness=3]
+    node[below,font=\footnotesize]{destroy / repair loop}(search.south);
+\end{tikzpicture}%
+}

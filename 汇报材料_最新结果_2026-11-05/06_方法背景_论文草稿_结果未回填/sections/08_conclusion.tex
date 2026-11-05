@@ -1,0 +1,24 @@
+\section{Conclusion}
+\label{sec:conclusion}
+This paper formulates hybrid fault-tolerant workflow deployment under a
+deadline and a deployment-dependent recovery-delay budget. The formulation
+connects nominal makespan with the largest additional delay over a specified
+fault-scenario set, while accounting for replica compute, provisioned
+communication, passive reserve, and a recovery-delay cost proxy.
+
+GCN-ALNS combines feasibility-first neighborhood search with supervised
+resource-graph preferences and a common scenario verifier. Learned guidance
+influences search decisions; it does not certify feasibility. The independent
+evaluation protocol fixes learning and validation roles, selects the model
+before testing, and preserves per-instance pairing and versioned deployment
+artifacts.
+
+\pending{After the complete rerun, add two or three sentences reporting the
+supported per-scale effects and their uncertainty. State the limits of those
+findings rather than claiming universal GCN superiority.}
+
+Future work includes real-trace evaluation, richer failure-time coverage,
+state-dependent learned guidance, and simulator profiling with incremental
+or indexed dependency evaluation. Each extension should preserve an explicit
+distinction between approximate search guidance and the fault model under
+which feasibility is established.

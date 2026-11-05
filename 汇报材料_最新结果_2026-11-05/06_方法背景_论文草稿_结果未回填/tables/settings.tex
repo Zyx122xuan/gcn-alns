@@ -1,0 +1,48 @@
+\begin{table}[!t]
+\caption{Registered experimental settings}
+\label{tab:settings}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.40\columnwidth}p{0.53\columnwidth}@{}}
+\toprule
+Setting & Value \\
+\midrule
+Learning/validation candidates & 60 / 15 instances \\
+Feasible demonstration instances & 26 training / 4 validation \\
+Held-out instances & 45 small / 30 medium / 15 large \\
+Tasks and nodes per instance & 50 / 150 / 500 by scale \\
+Workflow families & Montage, CyberShake, Epigenomics, LIGO, SIPHT shapes \\
+Task CPU/memory demand & One configured unit each \\
+Max. deployed active copies & 2 \\
+Detection/replanning delay & 1.0 / 0.5 s \\
+Switch/synchronization delay & 0.5 / 0.5 s \\
+Link-recovery wait & 2.0 s \\
+GCN layers/hidden width & 2 / 64 \\
+Domain embedding / neighbors & 8 dimensions / 8 neighbors \\
+GCN dropout / learning rate & 0.3 / $10^{-3}$ \\
+Adam weight decay & $5\times10^{-4}$ \\
+Negatives per positive & 5 \\
+Pairwise ranking loss weight & 0.1 \\
+Maximum epochs / patience & 100 / 10 \\
+ALNS restart budget & 2 \\
+Insertion GCN weight & 0.5 \\
+Main small/medium budget & 1000 iterations, 10 seeds \\
+Main large budget & 800 iterations, 5 seeds \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!t]
+\caption{SLA settings relative to the nominal HEFT-style reference}
+\label{tab:sla}
+\centering
+\begin{tabular}{lcc}
+\toprule
+Scenario & $D/T_{\mathrm{ref}}$ & $R_{\mathrm{SLA}}/T_{\mathrm{ref}}$ \\
+\midrule
+Tight & 1.15 & 0.05 \\
+Medium & 1.30 & 0.10 \\
+Loose & 1.50 & 0.20 \\
+\bottomrule
+\end{tabular}
+\end{table}

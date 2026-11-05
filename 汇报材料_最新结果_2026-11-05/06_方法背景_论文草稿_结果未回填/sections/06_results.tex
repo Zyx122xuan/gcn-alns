@@ -1,0 +1,51 @@
+\section{Results and Analysis}
+\label{sec:results}
+\draftnote{The independent rerun is complete. This section awaits integration
+of the audited analysis. No historical comparison is used as a final result.
+The red slots below must be replaced with the complete, version-matched
+results and their qualified interpretation before submission.}
+
+\subsection{Main Comparison}
+\input{generated/main_results}
+Table~\ref{tab:main_results} is reserved for the complete independent
+comparison. The final presentation will include the entire baseline suite,
+per-scale feasibility, and conditional cost. A companion paired table should
+report GCN-ALNS minus ALNS on the shared evaluation population and on the
+matched successful runs.
+
+\pending{Insert the final per-scale comparison, confidence intervals, and
+paired effect sizes. State explicitly whether GCN changes feasibility,
+conditional cost, or recovery margin, and report any scale where the effect
+reverses. Do not infer three-scale dominance from the completed small study.}
+
+\subsection{Mechanism and Component Analysis}
+The component results should separate changes to search behavior from
+changes to the protection or recovery policy. In particular, the dynamic
+rescheduling comparison measures the value of allowing cross-domain recovery
+under the evaluator, whereas the feasibility-first and restart comparisons
+measure search mechanisms. Removing all learned guidance measures the
+increment supplied by the trained prior on top of those mechanisms.
+
+\pending{Insert the 14-configuration component results and adjusted
+significance values. Present domain-separation relaxation as a separate
+admissibility or robustness comparison. Discuss learned subcomponents
+without assuming that individually nonsignificant effects prove redundancy.}
+
+\draftnote{A post-run audit found that the configurations labelled all-active
+and all-passive do not enforce those modes for every task. Their current
+results must not be presented as a strict pure-policy comparison. Describe
+them as repair-mode preferences, or replace them with separately versioned
+globally constrained experiments before making a hybrid-policy claim.}
+
+\subsection{Iteration Budget and Runtime}
+The budget sweep evaluates feasible rate and feasible cost against the
+iteration limit. This experiment can establish whether learned guidance is
+useful at restricted iteration budgets. Runtime must be read separately,
+because learned construction and insertion can change per-iteration work and
+the number of full-verification calls.
+
+\pending{Insert the complete 50--1000 iteration curves and full solver
+runtime comparison. Use ``first-feasible iteration'' for iteration counts;
+do not rename an iteration-derived approximation as measured wall-clock
+time-to-feasibility.}
+

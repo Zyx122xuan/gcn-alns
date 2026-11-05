@@ -1,0 +1,20 @@
+% Keep pending scientific results visible even if editorial notes are hidden.
+\newif\ifdraftnotes
+\draftnotestrue
+\newcommand{\draftnote}[1]{\ifdraftnotes\par\smallskip\noindent\textcolor{red!65!black}{\textbf{Draft note:} #1}\par\smallskip\fi}
+\newcommand{\pending}[1]{\ifdraftnotes\textcolor{red!65!black}{\textit{#1}}\else\textit{#1}\fi}
+\newcommand{\TBD}{\pending{TBD}}
+\newcommand{\taskset}{\mathcal{V}}
+\newcommand{\edgeset}{\mathcal{E}}
+\newcommand{\nodeset}{\mathcal{N}}
+\newcommand{\copies}[1]{\mathcal{P}_{#1}}
+\newcommand{\faultset}{\Omega(\chi)}
+\newcommand{\cbase}{C^{0}}
+\newcommand{\rmax}{R_{\max}}
+\newcommand{\reff}{R_{\mathrm{eff}}}
+\newcommand{\rhat}{\widehat{R}}
+\newcommand{\pos}[1]{\left[#1\right]_{+}}
+\DeclareMathOperator{\Pred}{pred}
+\DeclareMathOperator{\MLP}{MLP}
+\newtheorem{proposition}{Proposition}
+\newcommand{\includefinalfigure}[2]{\IfFileExists{#1}{\includegraphics[width=\columnwidth]{#1}}{\pending{#2}}}

@@ -1,0 +1,236 @@
+\section{GCN-Guided Adaptive Large Neighborhood Search}
+\label{sec:method}
+\subsection{Search Architecture}
+GCN-ALNS separates three roles: learned assignment preferences, inexpensive
+search guidance, and full scenario verification. Figure~\ref{fig:overview}
+shows this separation. The learned component ranks candidate placements; it
+does not replace the recovery simulator or alter the SLA definition.
+
+For a candidate deployment, the quick evaluator computes its nominal
+schedule, deployment cost $J_0$, and an approximate recovery-delay surrogate
+$\rhat$. The surrogate takes the largest positive difference between a
+task-local recovery estimate and that task's schedule slack. For an active
+task, the local estimate includes detection, switching, synchronization, and
+the finish-time gap between its two copies. For a passive task, it includes
+detection, replanning, a queue estimate, incoming communication, and
+reexecution. This approximation does not enumerate~\eqref{eq:fault_set} and
+is not a proven upper bound on $\rmax$.
+
+Define estimated violation and penalized cost as
+\begin{align}
+ V(\chi)&=\pos{\cbase-D}+\pos{\rhat-\reff},\\
+ \Phi(\chi)&=J_0(\chi)+\eta_D\pos{\cbase-D}
+                     +\eta_R\pos{\rhat-\reff}.
+ \label{eq:quick_objective}
+\end{align}
+Before a fully verified feasible solution has been found, the search
+minimizes $V+\epsilon J_0$, with $\epsilon=10^{-4}$ providing a small cost
+preference. It switches to $\Phi$ after establishing feasibility. This
+mechanism distinguishes the search's constraint-reduction phase from its
+cost-reduction phase.
+
+Full verification is reserved for candidates that the surrogate regards as
+feasible and whose quick deployment cost is below the stored feasible
+solution's reported score. If a candidate passes exhaustive scenario
+enumeration, the feasible-solution register is updated with its deployment
+and full cost. The quick screen uses $J_0$, whereas the stored score includes
+the recovery proxy in~\eqref{eq:objective}; the resulting heuristic is not a
+monotone descent method for the full reported objective. Moreover, an
+overconservative surrogate can screen out an actually feasible deployment.
+We therefore claim neither search completeness nor an optimality guarantee.
+
+\begin{figure*}[!t]
+ \centering
+ \input{figures/overview}
+ \caption{Training and deployment workflow. Only fixed train/validation
+ instances provide teacher demonstrations. The frozen scorer supplies
+ preferences to ALNS on a held-out instance. A quick evaluator guides search,
+ while full scenario enumeration determines whether a feasible solution may
+ be retained. The resource GCN and task MLP are separate encoders.}
+ \label{fig:overview}
+\end{figure*}
+
+\subsection{Initialization, Operators, and Restarts}
+Initial solutions include a criticality-based hybrid deployment and an
+earliest-finish-time deployment. When learned guidance is enabled, a GCN-led
+greedy construction is added. Candidates are ranked by estimated feasibility,
+violation, and penalized objective.
+
+The destroy pool contains random removal, critical-task removal, high-risk
+removal, congested-node removal, and removal of excessive backups. A learned
+operator additionally targets tasks placed on low-scoring nodes. Five repair
+operators emphasize normalized insertion cost, recovery delay, monetary cost,
+active-copy enhancement, or passive-mode conversion. Removing and repairing
+tasks changes both deployment locations and the conditions under which a
+task receives replicas.
+
+Destroy and repair operators are sampled by weighted roulette. Segment-level
+updates combine their previous weights with rewards for accepted, improving,
+or best-search outcomes. A candidate with a worse current search score can
+still be accepted with simulated-annealing probability
+\begin{equation}
+ P_{\mathrm{acc}}=\exp\!\left(-\frac{S(\chi')-S(\chi)}{T}\right),
+ \label{eq:sa}
+\end{equation}
+where $S$ is the active feasibility-first or penalized score, and the
+temperature decreases geometrically. At prolonged stagnation, the solver
+destroys and repairs a larger portion of a reference deployment, resets the
+temperature, and consumes one of a bounded number of restarts. If the restart
+budget is exhausted, it can stop before the iteration limit.
+
+% IEEEtran uses a figure float for pseudocode instead of a dedicated
+% algorithm float. algpseudocode supplies only the pseudocode layout.
+\begin{figure}[!t]
+\centering
+\begin{minipage}{\columnwidth}
+\hrule\vspace{3pt}
+\footnotesize
+\begin{algorithmic}[1]
+\Require Workflow/resource instance, parameters, iteration limit $B$
+\State Compute structural features and cached learned scores
+\State Construct diverse initial solutions; select current $\chi$
+\State Initialize operator weights, temperature, and restart budget
+\State $\chi_F\gets\varnothing$; $J_F\gets+\infty$
+\If{the quick screen accepts the initial solution}
+  \State Fully verify it; set $\chi_F\gets\chi$, $J_F\gets J(\chi)$ if feasible
+\EndIf
+\For{$t=1,\ldots,B$}
+  \State Select destroy and repair operators by adaptive roulette
+  \State $\chi'\gets\operatorname{Repair}(\operatorname{Destroy}(\chi))$
+  \State Evaluate $J_0$, nominal timing, $\rhat$, and $V$ for $\chi'$
+  \State Use $V+\epsilon J_0$ until $\chi_F$ exists, then use $\Phi$
+  \State Accept $\chi'$ into the current search state by improvement or SA
+  \If{quick-feasible$(\chi')$ and $J_0(\chi')<J_F$}
+    \State Enumerate all $\omega\in\Omega(\chi')$ with the shared verifier
+    \If{$\chi'$ passes the full capacity and recovery gate}
+      \State $\chi_F\gets\chi'$; $J_F\gets J(\chi')$
+    \EndIf
+  \EndIf
+  \State Accumulate operator rewards; update weights at segment boundaries
+  \If{stagnation threshold is reached}
+    \State If permitted, restart with a large destroy/repair step; otherwise stop
+    \State Evaluate the restart and apply the same feasible-register check
+  \EndIf
+\EndFor
+\State \Return $\chi_F$ if present; otherwise return the best quick-search state
+\end{algorithmic}
+\vspace{3pt}\hrule
+\end{minipage}
+\caption{GCN-ALNS search procedure with a shared recovery verifier.}
+\label{alg:gcnalns}
+\end{figure}
+
+\subsection{Resource-Graph Scoring Network}
+The physical resource graph connects each node to its $k$ nearest neighbors
+under unit-data communication delay, then symmetrizes the edges. With
+$\widetilde A=A+I$ and its degree matrix $\widetilde D$, propagation uses
+\begin{equation}
+ H^{(\ell+1)}=\widetilde D^{-1/2}\widetilde A\widetilde D^{-1/2}
+                  \bigl(H^{(\ell)}W^{(\ell)}+b^{(\ell)}\bigr),
+ \label{eq:gcn}
+\end{equation}
+with ReLU and dropout between graph layers. Node inputs combine 12 resource
+features with a learned fault-domain embedding. A separate MLP maps 12 task
+features---including workload, rank, slack, degree, level, and structural
+criticality---to a task embedding. No graph convolution is performed on the
+workflow DAG itself.
+
+Scalar criticality combines normalized upward rank, inverse structural slack,
+and out-degree:
+\begin{equation}
+ h_i=\vartheta_1\widetilde{\mathrm{rank}}_i+
+ \vartheta_2\widetilde{(\mathrm{slack}_i+\varepsilon)^{-1}}+
+ \vartheta_3\widetilde{\mathrm{outdeg}}_i,
+\end{equation}
+with weights $(0.4,0.4,0.2)$ in the registered configuration. Structural
+features are computed from average execution and communication estimates
+before choosing a deployment.
+
+For task $i$ and node $k$, a nine-dimensional interaction vector $z_{ik}$
+contains execution time, a node-risk feature, a local recovery-risk proxy,
+deployment cost, communication affinity, a compute-speed ratio, and three
+resource/deadline compatibility indicators. The placement preference is
+\begin{equation}
+ s_{ik}=\operatorname{sigmoid}\!\left(
+ \MLP([h_i^{T},h_k^{N},h_i^{T}\odot h_k^{N},z_{ik}])\right).
+ \label{eq:placement_score}
+\end{equation}
+Here $h_i^{T}$ is a task embedding and must not be confused with scalar
+criticality $h_i$. Predictions for all task--node
+pairs are computed once and cached; they do not change with the partial
+deployment during an ALNS run.
+
+\subsection{Integrating the Learned Preferences}
+For a task's current candidate node set, each insertion component is
+min--max normalized within that set. Insertion minimizes
+\begin{equation}
+\begin{split}
+ I_{ik}={}&\alpha_1\widetilde{\mathrm{ECT}}_{ik}
+ +\alpha_2\widetilde{\mathrm{Cost}}_{ik}
+ +\alpha_3\widetilde{\mathrm{Risk}}_{ik}\\
+ &+\alpha_4\widetilde{\mathrm{RecRisk}}_{ik}
+ +\alpha_5\widetilde{\mathrm{Load}}_{ik}
+ -\alpha_6 h_i\widetilde s_{ik}.
+\end{split}
+\label{eq:insertion}
+\end{equation}
+Normalization also applies to the learned score. Candidate screening checks
+resource capacity, relevant domain exclusions, and an estimated task finish
+against the deadline. It does not establish a hard recovery-delay bound. A
+fallback can still construct a candidate when screening finds no node, which
+is another reason that final verification is necessary.
+
+The learned scorer influences the greedy initial construction and the
+low-score destroy operator as well as~\eqref{eq:insertion}. Replica selection
+can also use its node preferences. Repair chooses active replication when a
+local recovery estimate exceeds the effective budget. The final method
+combines this heuristic protection rule with a learned placement scorer.
+Disabling the learned
+replica-ranking hook in the component study removes pair-score guidance for
+backup destinations while retaining the heuristic protection rule.
+
+\subsection{Learning from Feasible Demonstrations}
+A teacher panel runs passive and replicated heuristics together with ALNS on
+each designated learning or validation input. Every demonstration is checked
+by the same scenario verifier. Among feasible panel outputs, the cheapest
+top fraction $\zeta=0.2$ is retained, with at least one output if any is
+feasible. Chosen task--node pairs become positive examples. A positive pair
+from a demonstration is weighted by
+\begin{equation}
+ w_{ik}=(1+h_i)\left[1-\frac{\rmax}{\reff}\right]_{[0,1]},
+ \label{eq:teacher_weight}
+\end{equation}
+with the zero-budget case handled separately. Repeated positives retain the
+largest associated weight. Unselected compatible nodes provide sampled
+contrastive negatives; they are not proven to be invalid assignments in all
+possible deployments.
+
+Training combines positive and negative binary cross-entropy with a pairwise
+ranking term:
+\begin{equation}
+\begin{split}
+ \mathcal L={}&\mathcal L_{\mathrm{BCE}}^{+}
+ +\mathcal L_{\mathrm{BCE}}^{-}
+ -\lambda_{\mathrm{rank}}
+   \mathbb E_{(i,k^+,k^-)}
+   [\overline w_{ik^+}\log\operatorname{sigmoid}(a_{ik^+}-a_{ik^-})],
+\end{split}
+\label{eq:training_loss}
+\end{equation}
+where $a_{ik}$ is a placement logit and positive weights are normalized to
+mean one within a training batch. The final scorer is selected on the original
+validation instances and frozen before held-out testing. Alternative training
+configurations are retained as internal development records rather than
+presented as separate solver variants.
+
+\subsection{Verification Cost and Practical Limits}
+If a deployment has $F$ enumerated faults, verification performs $F$ forward
+replays. Each replay can scan the entire node set when selecting recovery
+destinations and must evaluate the affected dependencies. The current Python
+implementation also performs repeated edge scans when obtaining predecessor
+lists; these costs should not be hidden behind a claim of constant-time
+dependency lookup. Caching learned scores
+avoids repeating a network forward pass at every insertion, but insertion,
+schedule evaluation, and full verification can still dominate elapsed time.
+Measured runtime and iteration-based search effort are therefore reported
+separately.
