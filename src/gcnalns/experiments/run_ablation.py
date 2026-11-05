@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 
 from ..config import load_config
-from .runner import run_experiment
+from .runner import add_instance_source_args, experiment_source, run_experiment
 
 VARIANTS = {
     "Full": {},
@@ -52,7 +52,7 @@ VARIANTS = {
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="GCN-ALNS ablation study")
-    ap.add_argument("--instances", nargs="+", default=["data/instances"])
+    add_instance_source_args(ap)
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--repeats", type=int, default=None)
@@ -74,7 +74,7 @@ def main() -> None:
         variants = {v: VARIANTS[v] for v in args.variants}
     for variant, ablation in variants.items():
         tag = "ablation_" + variant.replace("/", "").replace(" ", "_")
-        run_experiment(args.instances, args.out, cfg,
+        run_experiment(out_dir=args.out, cfg=cfg, **experiment_source(args),
                        algorithms=["GCN-ALNS"], repeats=args.repeats,
                        ablation=ablation, tag=tag,
                        algo_label_suffix=f" [{variant}]",

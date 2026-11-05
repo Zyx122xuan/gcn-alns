@@ -1,0 +1,37 @@
+{
+  "signature": "92c8cf41bc53a69f53da0257248fa4964c6b28e1d5916b8c99b03e677d84f3e1",
+  "state": "complete",
+  "started_utc": "2026-10-31T08:42:22.034965+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_ablation",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--instance-scales",
+    "small",
+    "medium",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--variants",
+    "w/o Recovery Penalty",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "1000",
+    "--workers",
+    "8"
+  ],
+  "completed_utc": "2026-10-31T13:02:59.772553+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\ablation_wo_Recovery_Penalty.json": "3cf93631e5624e3c697e7ffdc95a5986ec38e525fd84c48b31f5dc4edeb037e5",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\ablation_wo_Recovery_Penalty.json": "fcbe0abbaee8919eb6e421c3f08997060eee1f15b4c832fdf594a73ad9975272"
+  }
+}

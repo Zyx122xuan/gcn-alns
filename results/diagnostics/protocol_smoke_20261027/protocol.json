@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "splits": {
+    "train": [
+      {
+        "iid": "train_a",
+        "path": "inputs/train_a.json",
+        "sha256": "46626cc4188a0a77376bf292110a73c9fff346c90e5e04df18dedac0e4f61b13",
+        "workflow_sha256": "2a43902d354c28ddaed71ad1a2c3e926a62d4785c9d01a7c3d718bbcc2b2704a",
+        "resource_sha256": "4d4b668239fb57a7ae24dda644f0352e4eb2fb5413022c7b563f690692877551",
+        "content_sha256": "a9540f043dfef37d2c76dfd28e8903c2e6adadb17c53437e789d9222ebfc2e8e"
+      },
+      {
+        "iid": "train_b",
+        "path": "inputs/train_b.json",
+        "sha256": "62844183455d36dfde6577215576585c3c837b4a044d8a405fef7669c2782482",
+        "workflow_sha256": "e4345c536a698590b5cd6f41ba6eb967f2413b769163cfda07792affcc08169c",
+        "resource_sha256": "72bd3e3fdea6c03ad01ccefdcb630de1253cce8bf150cc5d211e38352cbfda70",
+        "content_sha256": "e43e1ec213e0e0a4f79a978a627524458aa22ed152f5aac6ffd83a64dc09e739"
+      }
+    ],
+    "val": [
+      {
+        "iid": "val",
+        "path": "inputs/val.json",
+        "sha256": "9d669263722d3c9d9b9f2b50fc7aba7068bce1dd8bf1ae55fc4677fe115e35f7",
+        "workflow_sha256": "01f002c2da4446fba38fc49702b1bf13e858b4bc3ca1bf5c243ab0b1e5e17fd5",
+        "resource_sha256": "7aae418c00808dcb0df142c8447e2551f29940c05a4a89c77cbe9fb027a95661",
+        "content_sha256": "9cdc9964300c0b50508ea8e5bb0d959200e524c1b3b8f24e24558fb0e72854ca"
+      }
+    ],
+    "test": [
+      {
+        "iid": "test_feasible",
+        "path": "inputs/test_feasible.json",
+        "sha256": "31b9c39dab1c279330f2f792d34ce87f98bfa42532eb486bdd95025c9370d907",
+        "workflow_sha256": "90d3f942c185aa4cc2a97ed550f20e5cf90481401ae7b3d83f03e0f139e59cdc",
+        "resource_sha256": "369350b1e6619f16fc6eb8b4485c04848a3cf36ee86ae000c0f983629c597edf",
+        "content_sha256": "3927f56903d7f8ed1002de4b3be6452878d53111d2c395b31c8c2c81dd3aa3c7"
+      },
+      {
+        "iid": "test_infeasible",
+        "path": "inputs/test_infeasible.json",
+        "sha256": "edc529e43d20ec2da325ece4123d0935dde1df1e8540452120a803159d40e289",
+        "workflow_sha256": "acbf76c15074465b607230b25c9942ab0361de92c77382eca114452ac185191b",
+        "resource_sha256": "246f41f598bca500daf06b91859fa9d73224113ada573d977ed46c17854ea844",
+        "content_sha256": "ac5a6ea787a74efb5a2d3c32ba32dad266fbebc8c8f0c874002cea96269cc585"
+      }
+    ]
+  },
+  "metadata": {
+    "purpose": "CLI integration smoke; unrelated to independent_v1"
+  },
+  "sha256": "714a903ee8823f2914782fe86e2210c30c43c12cea644cca120c446495b9d72a"
+}

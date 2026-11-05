@@ -1,0 +1,6 @@
+[runner:validation_a2_off] 15 instances x 1 algorithms, repeats=5, workers=8
+  [validation_a2_off] 20/75 (131s)
+  [validation_a2_off] 40/75 (504s)
+  [validation_a2_off] 60/75 (804s)
+  [validation_a2_off] 75/75 (936s)
+[runner:validation_a2_off] wrote 75 runs -> D:\zyx\gcn-alns\results\independent_v1\validation\raw_json\validation_a2_off.json; CSVs -> D:\zyx\gcn-alns\results\independent_v1\validation\csv (937s)

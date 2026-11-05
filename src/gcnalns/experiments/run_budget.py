@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 
 from ..config import load_config
-from .runner import run_experiment
+from .runner import add_instance_source_args, experiment_source, run_experiment
 
 DEFAULT_BUDGETS = [50, 100, 200, 500, 1000]
 BUDGET_ALGORITHMS = ["ALNS", "GCN-ALNS"]
@@ -23,7 +23,7 @@ BUDGET_ALGORITHMS = ["ALNS", "GCN-ALNS"]
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Iteration-budget / convergence study")
-    ap.add_argument("--instances", nargs="+", default=["data/instances"])
+    add_instance_source_args(ap)
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--budgets", nargs="*", type=int, default=DEFAULT_BUDGETS)
@@ -36,7 +36,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
     for n in args.budgets:
-        run_experiment(args.instances, args.out, cfg,
+        run_experiment(out_dir=args.out, cfg=cfg, **experiment_source(args),
                        algorithms=args.algorithms, repeats=args.repeats,
                        tag=f"budget_{n}", max_iter=n, workers=args.workers,
                        model_path=args.model_path)

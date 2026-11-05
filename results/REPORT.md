@@ -1,5 +1,7 @@
 # GCN-ALNS / RLC-HFTSP 实验报告
 
+> **验证器版本说明（2026-10-27）**：已修复恢复任务未等待恢复节点空闲、最终可行判定遗漏 CPU/内存容量检查的问题，并纳入无故障调度的有效性标记。下文主实验、消融、预算及模型 A/B 数值仍为修复前验证器生成的历史结果，尚未按修复后版本重跑；不能将本次测试通过理解为对这些历史可行率和恢复指标的重新认证。修复与小范围影响检查见 [`docs/VERIFIER_CORRECTNESS_FIX.md`](../docs/VERIFIER_CORRECTNESS_FIX.md)。
+
 > **⚠️ 成本模型修正说明（2026-09-11）**
 > 本轮修正了成本模型中的若干错误并**重跑实验**：①`C_total` 删除重复计入的 `C_backup`（`C_total = C_compute + C_comm + C_reserve + C_recovery`）；②`C_comm` 改为对**所有副本对**求和（与调度模型一致，主动备份的每个副本都计通信费）；③恢复风险改用标准 `math.exp`；④`InsertCost` 的 cost 分量计入入向通信成本（原为恒 0 占位）；⑤`_comm_in` 清理。
 > **数据状态（2026-09-22，全部完成）**：Phase-1（`main_small/medium`、`main_hard_small/medium`、`ablation_*`、`budget_*`、`model_ab`）与 **Phase-2（`main_large` 450 / `main_hard_large` 180）均已用新成本模型跑完**，`aggregate` + `plots` 已在全量数据上重跑，`results/csv/*` 与 `results/figures/*` 现已覆盖三规模 + 难档全部结果。正文与附录的 `[待Phase-2]` 标记已全部清除。

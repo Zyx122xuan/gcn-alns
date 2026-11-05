@@ -132,6 +132,45 @@ def load_instance(path: str | Path, cfg: Config | None = None) -> Instance:
 # ---------------------------------------------------------------------------
 # CLI: generate a batch of synthetic instances
 # ---------------------------------------------------------------------------
+def generate_instances(cfg: Config, out: str | Path, *, scale: str = "small",
+                       n: int = 20, load: str = "medium", seed: int | None = None,
+                       scenarios: list[str] | None = None, iid_prefix: str = "",
+                       overwrite: bool = True) -> list[Path]:
+    """Generate a batch; protocol preparation uses a separate seed/ID namespace."""
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    base_seed = seed if seed is not None else cfg.get("seeds.global", 2026)
+    n_tasks = cfg["scales"]["workflow_tasks"][scale]
+    n_nodes = cfg["scales"]["resource_nodes"][scale]
+    load_level = cfg["scales"]["load_levels"][load]
+    wf_types = cfg["workflow_types"]
+    scenarios = list(scenarios) if scenarios else ["tight", "medium", "loose"]
+    unknown = [s for s in scenarios if s not in cfg["sla"]["scenarios"]]
+    if unknown:
+        raise ValueError(f"unknown SLA scenarios: {unknown}")
+    paths = []
+    per_combo = max(1, n // (len(wf_types) * len(scenarios)) or 1)
+    for wf_type, scenario in itertools.product(wf_types, scenarios):
+        for rep in range(per_combo):
+            instance_seed = base_seed + len(paths)
+            raw_wf = synthetic.generate_raw_workflow(wf_type, n_tasks, instance_seed)
+            machines = synthetic.generate_raw_machines(n_nodes, load_level,
+                                                        instance_seed + 10_000)
+            iid = f"{wf_type}_{scale}_{load}_{scenario}_r{rep}"
+            if iid_prefix:
+                iid = f"{iid_prefix}_{iid}"
+            path = out / f"{iid}.json"
+            if path.exists() and not overwrite:
+                raise ValueError(f"Refusing to overwrite frozen instance: {path}")
+            inst = build_instance(raw_wf, machines, cfg, iid, scenario,
+                                  meta={"scale": scale, "load": load,
+                                        "seed": instance_seed})
+            save_json(instance_to_dict(inst, materialize_links=(n_nodes <= 60), cfg=cfg),
+                      path)
+            paths.append(path)
+    return paths
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate experiment instances")
     parser.add_argument("--out", default="data/instances")
@@ -147,37 +186,9 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-
-    base_seed = args.seed if args.seed is not None else cfg.get("seeds.global", 2026)
-    n_tasks = cfg["scales"]["workflow_tasks"][args.scale]
-    n_nodes = cfg["scales"]["resource_nodes"][args.scale]
-    load_level = cfg["scales"]["load_levels"][args.load]
-    wf_types = cfg["workflow_types"]
-    if args.scenarios:
-        unknown = [s for s in args.scenarios if s not in cfg["sla"]["scenarios"]]
-        if unknown:
-            raise SystemExit(f"unknown SLA scenarios: {unknown}")
-        scenarios = list(args.scenarios)
-    else:
-        scenarios = ["tight", "medium", "loose"]
-
-    count = 0
-    combos = itertools.product(wf_types, scenarios)
-    per_combo = max(1, args.n // (len(wf_types) * len(scenarios)) or 1)
-    for (wf_type, scenario) in combos:
-        for rep in range(per_combo):
-            seed = base_seed + count
-            raw_wf = synthetic.generate_raw_workflow(wf_type, n_tasks, seed)
-            machines = synthetic.generate_raw_machines(n_nodes, load_level, seed + 10_000)
-            iid = f"{wf_type}_{args.scale}_{args.load}_{scenario}_r{rep}"
-            inst = build_instance(raw_wf, machines, cfg, iid, scenario,
-                                  meta={"scale": args.scale, "load": args.load, "seed": seed})
-            d = instance_to_dict(inst, materialize_links=(n_nodes <= 60), cfg=cfg)
-            save_json(d, out / f"{iid}.json")
-            count += 1
-    print(f"generated {count} instances into {out}")
+    paths = generate_instances(cfg, args.out, scale=args.scale, n=args.n,
+                               load=args.load, seed=args.seed, scenarios=args.scenarios)
+    print(f"generated {len(paths)} instances into {args.out}")
 
 
 if __name__ == "__main__":

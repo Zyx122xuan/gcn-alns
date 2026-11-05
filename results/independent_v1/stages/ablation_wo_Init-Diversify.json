@@ -1,0 +1,37 @@
+{
+  "signature": "06f4032d3dea34d9fb635a7230d11ab53858fd34fac7b040df6c64e06d056ff2",
+  "state": "complete",
+  "started_utc": "2026-11-03T10:20:14.203710+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_ablation",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--instance-scales",
+    "small",
+    "medium",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--variants",
+    "w/o Init-Diversify",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "1000",
+    "--workers",
+    "8"
+  ],
+  "completed_utc": "2026-11-03T17:31:49.762317+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\ablation_wo_Init-Diversify.json": "c6a5456b9fe27ec5af2e5112bbef8dc451b4520513ddf8958dfbaa92c8c60473",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\ablation_wo_Init-Diversify.json": "bb9502b311eafe9abef2175877fa7b2423e9dc5b9cebcfb0ce7dbf40ca338dc3"
+  }
+}

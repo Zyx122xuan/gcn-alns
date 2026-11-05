@@ -1,0 +1,24 @@
+{
+  "signature": "cb6d896a13c3dfa117bb59a0180661c600a2a9865996d800ff2a51680e7fccec",
+  "state": "complete",
+  "started_utc": "2026-10-27T14:59:27.960693+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.gcn.train",
+    "--data",
+    "D:\\zyx\\gcn-alns\\data\\gcn_independent_v1",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\models\\a2_off.pt",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--device",
+    "cuda:0"
+  ],
+  "completed_utc": "2026-10-27T14:59:39.655268+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\models\\a2_off.pt": "6a4cf00246dd5de6d5ec034a4a245aee2cbe534a03cc3556b37930da696cf093",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\models\\a2_off.pt.provenance.json": "aead0dccb3e407e84199270589ca4715ebe4f7b6d6cda4554b09122a68dc3bbb"
+  }
+}

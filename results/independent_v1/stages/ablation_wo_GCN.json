@@ -1,0 +1,37 @@
+{
+  "signature": "c9f759f0a41af300afa395430a4576d664d4384fdaa7cf7b7db559c6a365f6c8",
+  "state": "complete",
+  "started_utc": "2026-10-31T02:03:19.861170+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_ablation",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--instance-scales",
+    "small",
+    "medium",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--variants",
+    "w/o GCN",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "1000",
+    "--workers",
+    "8"
+  ],
+  "completed_utc": "2026-10-31T08:42:21.910226+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\ablation_wo_GCN.json": "1be8e9ebb9746337053cb7bb1a7eb6105cc299f5135e2cc44bbf5c4e00978953",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\ablation_wo_GCN.json": "0fcb9ad9c1041c503165ee3c4dfd783456479c93113e130aabe2891be787855f"
+  }
+}

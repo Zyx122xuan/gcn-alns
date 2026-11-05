@@ -1,0 +1,17 @@
+{
+  "state": "complete",
+  "dataset_sha256": "65ef58b88787506ef62ab2bdfab7cce8316dcacf528a4d0fea4d82b213ba2e99",
+  "protocol_sha256": "0e20eb8f74bce033de5b4e881e319d667d1bf3c87bafb87b8e312f89b33a98cb",
+  "n_teacher_inputs": 75,
+  "n_samples": 30,
+  "split_counts": {
+    "train": 26,
+    "val": 4,
+    "test": 0
+  },
+  "source_changes_limited_to_unused_experiment_infrastructure": [
+    "src/gcnalns/experiments/run_scalability.py",
+    "src/gcnalns/experiments/run_sensitivity.py",
+    "src/gcnalns/experiments/runner.py"
+  ]
+}

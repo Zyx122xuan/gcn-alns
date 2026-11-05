@@ -9,12 +9,13 @@ from __future__ import annotations
 import argparse
 
 from ..config import load_config
-from .runner import DEFAULT_ALGORITHMS, run_experiment
+from .runner import (DEFAULT_ALGORITHMS, add_instance_source_args,
+                     experiment_source, run_experiment)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Main scheduling comparison")
-    ap.add_argument("--instances", nargs="+", default=["data/instances"])
+    add_instance_source_args(ap)
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--algorithms", nargs="*", default=None)
@@ -29,7 +30,7 @@ def main() -> None:
     args = ap.parse_args()
 
     cfg = load_config(args.config)
-    run_experiment(args.instances, args.out, cfg,
+    run_experiment(out_dir=args.out, cfg=cfg, **experiment_source(args),
                    algorithms=args.algorithms or list(DEFAULT_ALGORITHMS),
                    repeats=args.repeats, tag=args.tag,
                    model_path=args.model_path,

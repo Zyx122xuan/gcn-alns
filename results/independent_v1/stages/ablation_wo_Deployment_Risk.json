@@ -1,0 +1,37 @@
+{
+  "signature": "73df61a54c1918c627c7460d7c35791da360eec1fbb42a7b0a4f5a3b1eb1a1f4",
+  "state": "complete",
+  "started_utc": "2026-10-31T20:15:37.908837+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_ablation",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--instance-scales",
+    "small",
+    "medium",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--variants",
+    "w/o Deployment Risk",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "1000",
+    "--workers",
+    "8"
+  ],
+  "completed_utc": "2026-11-01T03:33:31.041979+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\ablation_wo_Deployment_Risk.json": "2a33338874a5d672af1421eb76535dd05d7c8e3b0d97412129aad06aef50b98d",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\ablation_wo_Deployment_Risk.json": "5db9884d90a4efd705900bb649c47713f364156fdde44ad72a907b946067718a"
+  }
+}

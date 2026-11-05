@@ -1,0 +1,66 @@
+{
+  "iid": "train_b",
+  "workflow_name": "smoke",
+  "tasks": {
+    "0": {
+      "workload": 15,
+      "resource": 1.0,
+      "mem": 1.0
+    },
+    "1": {
+      "workload": 16,
+      "resource": 1.0,
+      "mem": 1.0
+    }
+  },
+  "edges": [
+    [
+      0,
+      1
+    ]
+  ],
+  "data": {
+    "0,1": 1
+  },
+  "nodes": {
+    "0": {
+      "compute": 15,
+      "cpu_cap": 100,
+      "mem_cap": 100,
+      "load": 0,
+      "load_var": 0,
+      "failure_rate": 0,
+      "cost_coef": 1,
+      "layer": "cloud",
+      "fault_domain": "cloud-0"
+    },
+    "1": {
+      "compute": 16,
+      "cpu_cap": 100,
+      "mem_cap": 100,
+      "load": 0,
+      "load_var": 0,
+      "failure_rate": 0,
+      "cost_coef": 1,
+      "layer": "cloud",
+      "fault_domain": "cloud-1"
+    },
+    "2": {
+      "compute": 17,
+      "cpu_cap": 100,
+      "mem_cap": 100,
+      "load": 0,
+      "load_var": 0,
+      "failure_rate": 0,
+      "cost_coef": 1,
+      "layer": "cloud",
+      "fault_domain": "cloud-2"
+    }
+  },
+  "deadline": 100,
+  "recovery_window": 100,
+  "meta": {
+    "scale": "small",
+    "sla_scenario": "loose"
+  }
+}

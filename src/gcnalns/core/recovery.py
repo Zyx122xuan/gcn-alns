@@ -8,7 +8,8 @@ fault-aware forward re-simulation, then:
     R_omega   = max(0, C_max^omega - C_max^0)
     R_max     = max_omega R_omega
     R_eff     = min(R^max, D - C_max^0)              (effective recovery budget)
-    feasible  = C_max^0 <= D  and  R_max <= R_eff
+    feasible  = complete deployment with CPU/memory capacity respected,
+                C_max^0 <= D  and  R_max <= R_eff
 
 Deterministic fault timing (Spec sec.9):
 * task instance fault: t_omega = planned finish of that instance
@@ -19,7 +20,7 @@ Recovery semantics:
 * active backup + healthy replica -> switch:
       C_rec = min_{healthy} max(f_r, t_omega + det + sw + sync)
 * otherwise (passive / all replicas hit) -> dynamic reschedule + recompute:
-      F'_i = max(input_ready, t_omega + det + replan) + queue + p_ik'
+      F'_i = max(input_ready, node_free[k'], t_omega + det + replan) + queue + p_ik'
   recovery node chosen by RecCost (Spec sec.12); infeasible -> +inf.
 """
 from __future__ import annotations
@@ -32,7 +33,12 @@ from ..data.links import LinkFactory
 from .dag import topological_order
 from .fault_set import Fault, build_fault_set
 from .model import Instance, Solution
-from .schedule_eval import ScheduleResult, compute_schedule, exec_time
+from .schedule_eval import (
+    ScheduleResult,
+    check_resource_feasibility,
+    compute_schedule,
+    exec_time,
+)
 
 INF = float("inf")
 
@@ -228,7 +234,10 @@ def simulate_fault(instance: Instance, solution: Solution, base: ScheduleResult,
                 return INF
             node = instance.continuum.nodes[kp]
             ready = input_ready(i, kp, link_edge)
-            start = max(ready, t_omega + det + replan)
+            # Recovery shares the same per-node serial timeline as healthy
+            # replicas and previously recovered tasks. Ignoring node_free lets
+            # multiple recomputations overlap on the same physical node.
+            start = max(ready, node_free[kp], t_omega + det + replan)
             finish = start + node.queue_wait + exec_time(instance, i, kp)
             used_cpu[kp] += wf.tasks[i].resource
             used_mem[kp] += wf.tasks[i].mem
@@ -324,7 +333,15 @@ def verify(instance: Instance, solution: Solution, factory: LinkFactory,
     res.r_max = r_max
     res.avg_recovery = (sum_r / len(faults)) if faults else 0.0
     res.margin = res.r_eff - r_max
-    res.feasible = (base.cmax <= instance.deadline + 1e-9) and (r_max <= res.r_eff + 1e-9)
+    # SLA timing alone cannot make an incomplete or over-capacity deployment
+    # feasible. Count every deployed replica against remaining CPU and memory,
+    # using the same footprint rule as the schedulers' placement checks.
+    res.feasible = (
+        base.feasible
+        and check_resource_feasibility(instance, solution)
+        and base.cmax <= instance.deadline + 1e-9
+        and r_max <= res.r_eff + 1e-9
+    )
     # secondary recovery cost proxy: mean extra makespan across faults
     res.recovery_cost = res.avg_recovery
     return res

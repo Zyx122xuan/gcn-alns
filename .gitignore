@@ -3,5 +3,7 @@ __pycache__/
 *.egg-info/
 .venv/
 .pytest_cache/
+.test_tmp/
 *.pt
 .DS_Store
+paper/

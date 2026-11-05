@@ -84,3 +84,25 @@ streamlit run src/gcnalns/viz/dashboard.py
 Per the experiment spec, the **recovery verifier** is implemented and unit
 tested first; every algorithm calls the *same* verifier so SLA feasibility is
 judged identically across methods. See `tests/test_recovery_verifier.py`.
+
+## Independent evaluation
+
+The frozen protocol in `data/protocols/independent_v1/protocol.json` separates
+60 learning inputs, 15 validation inputs and 90 newly generated solver-test
+instances. The GCN teacher sees only train/val; infeasible solver-test instances
+are retained. Train a new model with auditable provenance before using `test`:
+
+```powershell
+$env:PYTHONPATH="src"
+python -m gcnalns.gcn.dataset --protocol data/protocols/independent_v1/protocol.json --out data/gcn_independent_v1 --workers 8
+python -m gcnalns.gcn.train --data data/gcn_independent_v1 --out results/independent_v1/gcn_model.pt --device cuda:0
+python -m gcnalns.experiments.run_main --protocol data/protocols/independent_v1/protocol.json --split val --out results/independent_v1/validation --model-path results/independent_v1/gcn_model.pt --algorithms ALNS GCN-ALNS --workers 8
+# After fixing the model and parameters:
+python -m gcnalns.experiments.run_main --protocol data/protocols/independent_v1/protocol.json --split test --out results/independent_v1/test --model-path results/independent_v1/gcn_model.pt --workers 8
+```
+
+Each new experiment stores a version manifest and deployment snapshots. Resuming
+requires the same inputs, configuration, model, code and study parameters.
+Historical `results/raw_json` records lack those manifests; use a fresh output
+directory for new runs. The earlier quick-start commands describe development
+runs, not held-out evaluation. Full details: [evaluation handoff](docs/INDEPENDENT_EVALUATION_HANDOFF.md).

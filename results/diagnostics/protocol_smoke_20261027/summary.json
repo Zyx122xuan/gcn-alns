@@ -1,0 +1,18 @@
+{
+  "purpose": "Tiny CLI smoke, not final evaluation",
+  "workers": 2,
+  "n_runs": 6,
+  "algorithms": [
+    "ALNS",
+    "GCN-ALNS",
+    "HEFT"
+  ],
+  "test_iids": [
+    "test_feasible",
+    "test_infeasible"
+  ],
+  "exact_resume_passed": true,
+  "changed_budget_rejected": true,
+  "infeasible_test_retained": true,
+  "results_dir": "results_test_v2"
+}

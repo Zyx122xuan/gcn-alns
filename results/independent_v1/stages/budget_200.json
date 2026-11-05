@@ -1,0 +1,39 @@
+{
+  "signature": "7de68ae9483d9915095a0836bace3a57f8c70eae7c9c13b857ec6710f28bfafd",
+  "state": "complete",
+  "started_utc": "2026-11-03T17:39:04.193071+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_main",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--algorithms",
+    "ALNS",
+    "GCN-ALNS",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "200",
+    "--tag",
+    "budget_200",
+    "--workers",
+    "8",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--instance-scales",
+    "small"
+  ],
+  "completed_utc": "2026-11-03T17:47:49.707326+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\budget_200.json": "c514542065bf50933bfab762f98a3f64b1dfbe945a7973ba00d718b611ae8f7f",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\budget_200.json": "471cae2109895d393794ac584ef5adbbd1a40b6f0a8a9b7140ae267cf11f453c"
+  }
+}

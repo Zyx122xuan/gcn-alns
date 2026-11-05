@@ -1,5 +1,11 @@
 # GCN-ALNS 实现进度与续作交接 (Handoff)
 
+> **全流程接续（2026-10-27）**：用户已授权 teacher 完成后继续训练、验证、正式主对比和补充实验。后台协调器已排队，固定预算共 **20550 条正式测试记录**（另有 225 条验证记录）；A2-on/off 均从新 teacher 训练，只依据 val 选择模型。状态见 `results/independent_v1/pipeline_state.json`，恢复命令和各阶段范围见 [重跑队列说明](INDEPENDENT_RERUN_PIPELINE.md)。当前 **48 tests passed**，正式结果尚未完成。
+
+> **第二步更新（2026-10-27）**：独立评测与溯源代码已完成，正式协议固定 train/val/test 输入为 **60/15/90**；新测试实例尚未用于正式求解或调参。最终 GCN 测试要求模型来源记录，续跑核对配置/代码/模型/实例并保存解快照；旧结果目录不能混入新版本记录。当前总计 **38 tests passed**。正式 teacher 重建与模型重训尚未执行；命令和注意事项见 [独立评测交接](INDEPENDENT_EVALUATION_HANDOFF.md)。
+
+> **最新更新（2026-10-27）**：恢复验证器已修复恢复节点排队和最终 CPU/内存容量检查，并纳入无故障调度的有效性标记。现有单测为 **21 passed**。历史实验尚未用新验证器重跑；本文件下方的阶段状态和数值包含早期记录，应结合 9 月报告及本次 [修复交接](VERIFIER_CORRECTNESS_FIX.md) 阅读。
+
 > 本文件用于跨 session 续作。记录已完成内容、当前状态、剩余工作、已知问题与恢复方式。
 > 计划文件位于 `~/.cursor/plans/gcn-alns-experiment-plan_6de824b3.plan.md`（**不要编辑**）。
 

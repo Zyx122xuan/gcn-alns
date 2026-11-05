@@ -1,0 +1,36 @@
+{
+  "experiment_id": "27b2e75ddc8fb2d4998c8a0b25e930aa21766bfbda72f715f2e084a930248e38",
+  "tag": "main",
+  "algorithm": "ALNS",
+  "iid": "test_infeasible",
+  "rep": 0,
+  "placement": {
+    "1": [
+      2,
+      0
+    ],
+    "0": [
+      2,
+      1
+    ]
+  },
+  "mode": {
+    "1": true,
+    "0": true
+  },
+  "order": {
+    "0": [
+      1
+    ],
+    "1": [
+      0
+    ],
+    "2": [
+      0,
+      1
+    ]
+  },
+  "meta": {
+    "found_feasible": false
+  }
+}

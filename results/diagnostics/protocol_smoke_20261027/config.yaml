@@ -1,0 +1,221 @@
+f_std: 1000.0
+recovery:
+  delta_detect: 1.0
+  delta_replan: 0.5
+  delta_switch: 0.5
+  delta_sync: 0.5
+  delta_link_rec: 2.0
+sla:
+  scenarios:
+    tight:
+      alpha: 1.15
+      beta: 0.05
+    medium:
+      alpha: 1.3
+      beta: 0.1
+    loose:
+      alpha: 1.5
+      beta: 0.2
+    tight2:
+      alpha: 1.15
+      beta: 0.1
+    tight3:
+      alpha: 1.15
+      beta: 0.15
+  default_scenario: medium
+layering:
+  q_weights:
+    cap: 0.5
+    load: 0.25
+    var: 0.25
+  cap_weights:
+    cpu: 0.5
+    mem: 0.5
+  split:
+    cloud: 0.2
+    edge: 0.5
+    device: 0.3
+  fk_base: 0.5
+  fk_scale: 2.5
+  layers:
+    cloud:
+      cost_coef: 1.0
+      base_failure_rate: 1.0e-06
+    edge:
+      cost_coef: 0.6
+      base_failure_rate: 5.0e-06
+    device:
+      cost_coef: 0.3
+      base_failure_rate: 1.0e-05
+  failure_load_gamma1: 0.5
+  failure_var_gamma2: 0.5
+fault_domain:
+  groups:
+    cloud: 8
+    edge: 12
+    device: 20
+links:
+  local_latency: 0.001
+  local_bandwidth: .inf
+  perturb_seed: 2026
+  perturb_low: 0.8
+  perturb_high: 1.2
+  table:
+    cloud-cloud:
+      bw: 100.0
+      lat: 0.002
+      fail: 1.0e-06
+    cloud-edge:
+      bw: 50.0
+      lat: 0.01
+      fail: 3.0e-06
+    edge-edge:
+      bw: 40.0
+      lat: 0.015
+      fail: 5.0e-06
+    device-edge:
+      bw: 15.0
+      lat: 0.04
+      fail: 8.0e-06
+    cloud-device:
+      bw: 10.0
+      lat: 0.06
+      fail: 1.0e-05
+    device-device:
+      bw: 8.0
+      lat: 0.08
+      fail: 1.5e-05
+criticality:
+  theta1: 0.4
+  theta2: 0.4
+  theta3: 0.2
+  eps: 1.0e-06
+cost:
+  comm_cost_coef: 0.01
+  reserve_cost_coef: 0.1
+  recovery_cost_weight: 1.0
+rec_cost:
+  theta1: 1.0
+  theta2: 1.0
+  theta3: 1.0
+  theta4: 0.5
+  theta5: 0.2
+insert_cost:
+  normalize: true
+  w1: 1.0
+  w2: 0.5
+  w3: 1.0
+  w4: 2.0
+  w5: 0.5
+  w6: 0.5
+alns:
+  max_iter: 2
+  max_removal_frac: 0.2
+  m_max: 2
+  initial_temperature: 1.0
+  cooling_rate: 0.995
+  repeats: 10
+  segment_length: 50
+  reaction_factor: 0.1
+  scores:
+    best: 33.0
+    better: 9.0
+    accepted: 13.0
+  no_improve_stop: 300
+  restarts: 2
+  recovery_penalty_weight: 100.0
+  deadline_penalty_weight: 200.0
+gcn:
+  num_layers: 2
+  hidden_dim: 8
+  out_dim: 1
+  dropout: 0.0
+  emb_dim: 8
+  knn_k: 8
+  comm_neighbor_sample: 64
+  activation: relu
+  optimizer: adam
+  learning_rate: 0.001
+  weight_decay: 0.0005
+  batch_size: 256
+  max_epochs: 2
+  early_stop_patience: 10
+  neg_per_pos: 5
+  rank_loss_weight: 0.1
+  mode_loss_weight: 0.5
+  mode_pos_weight: 0.0
+  l2_reg: 0.0001
+  high_quality_top_frac: 0.2
+  split:
+    train: 0.7
+    val: 0.15
+    test: 0.15
+  model_path: results/gcn_model.pt
+seeds:
+  global: 2026
+  node_sampling: 2026
+  link_generation: 2026
+  alns: 2026
+  gcn_training: 2026
+  split: 2026
+scales:
+  workflow_tasks:
+    small: 50
+    medium: 150
+    large: 500
+  resource_nodes:
+    small: 50
+    medium: 150
+    large: 500
+  load_levels:
+    low:
+      util_low: 0.05
+      util_high: 0.3
+    medium:
+      util_low: 0.3
+      util_high: 0.6
+    high:
+      util_low: 0.6
+      util_high: 0.9
+workflow_types:
+- Montage
+- CyberShake
+- Epigenomics
+- LIGO
+- SIPHT
+baselines:
+  hybrid_criticality_quantile: 0.7
+  critical_path_slack_frac: 0.05
+  reliability_high_crit_quantile: 0.7
+reproductions:
+  recr_d:
+    db: 0.5
+    zeta_cost: 1.0
+    beta_deadline: 1.0
+    gamma_reliability: 1.0
+    energy_alpha: 0.0
+    theta_reliability: 0.9
+    trm_max_rounds: 6
+    trm_batch_frac: 0.15
+  hfwpf:
+    db: 0.5
+    t_boot: 0.0
+    cap_bias: 0.3
+  ga_placement:
+    pop_size: 40
+    generations: 60
+    crossover_rate: 0.9
+    mutation_rate: 0.15
+    tournament_k: 3
+    elitism: 2
+    seed_greedy: true
+    max_candidates: 64
+  ra_moma:
+    pop_size: 50
+    generations: 60
+    crossover_rate: 0.1
+    mutation_rate: 0.02
+    intensify_size: 20
+    tournament_k: 2
+    backup_init_prob: 0.3
+    max_candidates: 64

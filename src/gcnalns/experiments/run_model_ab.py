@@ -8,7 +8,8 @@ Runs GCN-ALNS twice on the same instances/seeds with two checkpoints:
   ``GCN-ALNS (A2-on)``
 
 plus a plain ``ALNS`` reference. Distinct algorithm labels let the aggregator
-separate them in one summary. Tag defaults to ``model_ab`` (resume-safe).
+separate them in one summary. Tags use ``model_ab_a2_off``, ``model_ab_a2_on``
+and ``model_ab_alns`` so distinct checkpoint versions never share a resume key.
 
 CLI::
 
@@ -20,12 +21,12 @@ from __future__ import annotations
 import argparse
 
 from ..config import load_config
-from .runner import run_experiment
+from .runner import add_instance_source_args, experiment_source, run_experiment
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="GCN model A/B (A2 on vs off)")
-    ap.add_argument("--instances", nargs="+", default=["data/instances/small"])
+    add_instance_source_args(ap, default=("data/instances/small",))
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--repeats", type=int, default=None)
@@ -41,17 +42,20 @@ def main() -> None:
     args = ap.parse_args()
 
     cfg = load_config(args.config)
-    common = dict(repeats=args.repeats, tag=args.tag,
+    common = dict(repeats=args.repeats, **experiment_source(args),
                   workers=args.workers, max_iter=args.max_iter)
 
-    run_experiment(args.instances, args.out, cfg, algorithms=["GCN-ALNS"],
+    run_experiment(out_dir=args.out, cfg=cfg, algorithms=["GCN-ALNS"],
+                   tag=f"{args.tag}_a2_off",
                    model_path=args.old_model,
                    algo_label_suffix=" (A2-off)", **common)
-    run_experiment(args.instances, args.out, cfg, algorithms=["GCN-ALNS"],
+    run_experiment(out_dir=args.out, cfg=cfg, algorithms=["GCN-ALNS"],
+                   tag=f"{args.tag}_a2_on",
                    model_path=args.new_model,
                    algo_label_suffix=" (A2-on)", **common)
     if args.with_alns:
-        run_experiment(args.instances, args.out, cfg, algorithms=["ALNS"],
+        run_experiment(out_dir=args.out, cfg=cfg, algorithms=["ALNS"],
+                       tag=f"{args.tag}_alns",
                        **common)
 
 

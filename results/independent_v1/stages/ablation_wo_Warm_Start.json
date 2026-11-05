@@ -1,0 +1,37 @@
+{
+  "signature": "a049680d792e556d621a07a66b3bca0c74570e8d9c456360baf29233d4298b0b",
+  "state": "complete",
+  "started_utc": "2026-11-01T23:13:45.501633+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "-u",
+    "-m",
+    "gcnalns.experiments.run_ablation",
+    "--protocol",
+    "D:\\zyx\\gcn-alns\\data\\protocols\\independent_v1\\protocol.json",
+    "--split",
+    "test",
+    "--instance-scales",
+    "small",
+    "medium",
+    "--out",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test",
+    "--config",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\configs\\a2_off.yaml",
+    "--model-path",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\gcn_model.pt",
+    "--variants",
+    "w/o Warm Start",
+    "--repeats",
+    "10",
+    "--max-iter",
+    "1000",
+    "--workers",
+    "8"
+  ],
+  "completed_utc": "2026-11-02T06:32:19.264411+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\raw_json\\ablation_wo_Warm_Start.json": "88fed28b96a5b9968fcf4b95c171b7eb1d350ac0c1c1cac6a950cf5775450dd1",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\test\\manifests\\ablation_wo_Warm_Start.json": "aedea16b6542416cfd5e87186f9c916f61206a48808a8ffb04a3da6df65afa0c"
+  }
+}

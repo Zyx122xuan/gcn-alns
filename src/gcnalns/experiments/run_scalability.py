@@ -22,7 +22,7 @@ from ..config import load_config
 from ..data import synthetic
 from ..data.instance_builder import build_instance, instance_to_dict
 from ..utils.io import save_json
-from .runner import run_experiment
+from .runner import add_instance_source_args, run_experiment
 
 SCALABILITY_ALGORITHMS = [
     "HEFT", "Criticality-Based Hybrid", "ALNS", "GCN-ALNS",
@@ -58,7 +58,7 @@ def generate_scalability_instances(out_dir: str | Path, cfg, scales: list[str],
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Scalability study")
-    ap.add_argument("--instances", nargs="+", default=["data/instances_scal"])
+    add_instance_source_args(ap, default=("data/instances_scal",))
     ap.add_argument("--out", default="results")
     ap.add_argument("--config", default=None)
     ap.add_argument("--generate", action="store_true")
@@ -67,9 +67,11 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--max-iter", dest="max_iter", type=int, default=None)
     args = ap.parse_args()
+    if args.generate and args.protocol:
+        ap.error("--generate cannot modify a frozen --protocol")
 
     cfg = load_config(args.config)
-    instances = args.instances
+    instances = None if args.protocol else args.instances
     if args.generate:
         # --generate writes to the first --instances path (single dir).
         gen_dir = args.instances[0] if isinstance(args.instances, list) else args.instances
@@ -77,7 +79,9 @@ def main() -> None:
 
     run_experiment(instances, args.out, cfg,
                    algorithms=SCALABILITY_ALGORITHMS, repeats=args.repeats,
-                   tag="scalability", workers=args.workers, max_iter=args.max_iter)
+                   tag="scalability", workers=args.workers, max_iter=args.max_iter,
+                   protocol_path=args.protocol, split=args.split,
+                   instance_scales=args.instance_scales)
 
 
 if __name__ == "__main__":

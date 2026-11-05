@@ -12,6 +12,7 @@ CLI::
 from __future__ import annotations
 
 import argparse
+import copy
 import pickle
 import time
 from pathlib import Path
@@ -21,6 +22,7 @@ import torch
 import torch.nn.functional as F
 
 from ..config import Config, load_config
+from ..utils.provenance import code_version, content_hash, file_hash, write_manifest
 from .dataset import InstanceSample
 from .model import GCNScorer
 
@@ -213,6 +215,23 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
 
     samples = data["samples"]
     split = data["split"]
+    assigned = [iid for ids in split.values() for iid in ids]
+    if len(assigned) != len(set(assigned)):
+        raise ValueError("Training split leakage: an iid appears in multiple splits")
+    if set(assigned) != set(samples):
+        raise ValueError("Training split assignments do not match dataset samples")
+    if not split.get("train"):
+        raise ValueError("No feasible training demonstrations; increase the teacher budget")
+    provenance = data.get("provenance")
+    if provenance and provenance.get("protocol_sha256"):
+        if split.get("test"):
+            raise ValueError("Frozen solver test instances must not enter GCN training")
+        if not split.get("val"):
+            raise ValueError("No validation demonstrations; do not borrow from the test set")
+        for role in ("train", "val"):
+            allowed = {r["iid"] for r in provenance["source_splits"][role]}
+            if not set(split[role]).issubset(allowed):
+                raise ValueError(f"Samples outside frozen {role} split")
     num_domains = data["num_domains"]
     tens = {iid: _to_tensors(s, dev) for iid, s in samples.items()}
 
@@ -312,7 +331,14 @@ def train(data: dict, cfg: Config, device: str = "cpu", verbose: bool = True):
     return model, {"history": history, "best_val": best_val,
                    "num_domains": num_domains, "ranking": rank_metrics,
                    "mode": mode_metrics, "has_mode_head": mode_w > 0.0,
-                   "mode_pos_weight": mode_pw}
+                   "mode_pos_weight": mode_pw,
+                   "provenance": {
+                       "dataset": provenance,
+                       "sample_splits": split,
+                       "config": copy.deepcopy(cfg.data),
+                       "config_sha256": content_hash(cfg.data),
+                       "code": code_version(),
+                   }}
 
 
 def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> None:
@@ -323,8 +349,12 @@ def save_model(model: GCNScorer, meta: dict, cfg: Config, path: str | Path) -> N
         "num_domains": meta["num_domains"],
         "has_mode_head": bool(meta.get("has_mode_head", False)),
         "gcn_cfg": cfg["gcn"],
+        "training_provenance": meta.get("provenance"),
         "meta": {k: v for k, v in meta.items() if k != "history"},
     }, path)
+    write_manifest({"schema_version": 1, "checkpoint_sha256": file_hash(path),
+                    "training": meta.get("provenance")},
+                   path.with_name(path.name + ".provenance.json"))
 
 
 def main() -> None:
@@ -344,6 +374,7 @@ def main() -> None:
     print(f"Training GCN on {len(data['split']['train'])} train instances ...")
     t0 = time.perf_counter()
     model, meta = train(data, cfg, device=args.device)
+    meta["provenance"]["dataset_sha256"] = file_hash(Path(args.data) / "dataset.pkl")
     save_model(model, meta, cfg, args.out)
     print(f"Saved model -> {args.out}  (best val={meta['best_val']:.4f}, "
           f"{time.perf_counter()-t0:.1f}s)")

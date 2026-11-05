@@ -1,0 +1,17 @@
+{
+  "selected": "a2_off",
+  "reason": "higher validation feasibility",
+  "n_validation_runs_per_model": 75,
+  "feasible_on": 18,
+  "feasible_off": 23,
+  "n_common_feasible": 13,
+  "paired_relative_cost_on_minus_off": 0.046060832535752314,
+  "protocol_sha256": "0e20eb8f74bce033de5b4e881e319d667d1bf3c87bafb87b8e312f89b33a98cb",
+  "dataset_sha256": "65ef58b88787506ef62ab2bdfab7cce8316dcacf528a4d0fea4d82b213ba2e99",
+  "model_sha256": "6a4cf00246dd5de6d5ec034a4a245aee2cbe534a03cc3556b37930da696cf093",
+  "validation_outputs": {
+    "validation_a2_off.json": "22633e03be645e1f20ddde27966d2a5642556908c49e81c697c260a15379333b",
+    "validation_a2_on.json": "478d8149ed57dae30e5f85ed03a3180b2125ae93e6f5348d4076bc29795880ba",
+    "validation_alns.json": "714d59ec568b1d2950cee971849798eec126540a63c44ba2d3f68aae7d7fa5e0"
+  }
+}

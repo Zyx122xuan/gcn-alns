@@ -1,0 +1,22 @@
+Training GCN on 26 train instances ...
+  mode-head pos_weight=50.00 (active positives up-weighted for class imbalance)
+  epoch   0  train=1.8349  val=3.5123
+  epoch   1  train=1.6554  val=3.4982
+  epoch   2  train=1.5094  val=3.2396
+  epoch   3  train=1.4075  val=3.1149
+  epoch   4  train=1.2920  val=2.9498
+  epoch   5  train=1.2118  val=2.9027
+  epoch   6  train=1.1427  val=3.0682
+  epoch   7  train=1.0937  val=3.5352
+  epoch   8  train=1.0475  val=3.6715
+  epoch   9  train=1.0185  val=3.4404
+  epoch  10  train=0.9549  val=4.3528
+  epoch  11  train=0.9161  val=3.8267
+  epoch  12  train=0.9176  val=4.5761
+  epoch  13  train=0.9186  val=3.9083
+  epoch  14  train=0.8885  val=4.4425
+  epoch  15  train=0.8829  val=3.8888
+  early stop at epoch 15 (best val=2.9027)
+  [val] top1_hit_rate=0.193 pairwise_auc=0.852 (tasks=300)
+  [val] mode_auc=0.975 mode_acc=0.949 (active=22/311)
+Saved model -> D:\zyx\gcn-alns\results\independent_v1\models\a2_on.pt  (best val=2.9027, 7.3s)

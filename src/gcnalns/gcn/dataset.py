@@ -8,8 +8,9 @@ demonstrations. Their (task -> hosting-node) decisions become positive samples;
 feasible-but-unchosen nodes become negatives (``neg_per_pos`` sampled per
 positive at train time). Infeasible candidates are masked out.
 
-Instances (not individual samples) are split train/val/test so no instance
-leaks across splits.
+With --protocol, only frozen train/val instances enter the teacher. The solver
+test set remains complete and untouched. Legacy development datasets still
+support a local train/val/test split, assigned before teacher filtering.
 
 CLI::
 
@@ -23,7 +24,6 @@ import math
 import os
 import pickle
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -40,21 +40,14 @@ from ..core.recovery import verify
 from ..core.schedule_eval import compute_schedule
 from ..data.instance_builder import load_instance
 from ..data.links import get_factory
+from ..data.protocol import load_protocol
+from ..utils.provenance import code_version, collect_instances, content_hash
 from .features import InstanceFeatures, build_features
+from .samples import InstanceSample
 
 # Schedulers used to generate demonstrations. ALNS is added separately (it has a
 # different constructor and is the strongest teacher).
 _DEMO_BASELINES = [NoFT, ReactiveOnly, FullProactive, CriticalityHybrid]
-
-
-@dataclass
-class InstanceSample:
-    feats: InstanceFeatures
-    pos: np.ndarray            # [K, 2] (task_pos, node_pos) positive pairs
-    feas_mask: np.ndarray      # [T, N] uint8 feasible candidate mask
-    n_feasible_solutions: int
-    pos_w: np.ndarray = None   # [K] per-positive importance weight (Spec sec.13)
-    pos_mode: np.ndarray = None  # [K] FT-mode label (1=active backup, 0=passive)
 
 
 def _feasible_mask(feats: InstanceFeatures) -> np.ndarray:
@@ -176,18 +169,6 @@ def split_instances(iids: list[str], cfg: Config) -> dict[str, list[str]]:
     }
 
 
-def _collect_paths(instances_dir) -> list[Path]:
-    """Return sorted instance JSON paths from one dir or a list of dirs."""
-    if isinstance(instances_dir, (str, Path)):
-        dirs = [instances_dir]
-    else:
-        dirs = list(instances_dir)
-    paths: list[Path] = []
-    for d in dirs:
-        paths.extend(sorted(Path(d).glob("*.json")))
-    return paths
-
-
 def _worker_init() -> None:
     """Limit per-worker BLAS / torch threads to avoid oversubscription."""
     for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
@@ -202,16 +183,33 @@ def _worker_init() -> None:
 
 def _build_sample_worker(task: tuple):
     """Top-level worker (spawn-safe): build one instance sample."""
-    path_str, cfg_data, alns_iter = task
+    path_str, cfg_data, alns_iter, iid = task
     cfg = Config(cfg_data)
     sample = build_instance_sample(Path(path_str), cfg, alns_iter)
-    return Path(path_str).stem, sample
+    return iid, sample
 
 
 def build_dataset(instances_dir, cfg: Config,
                   alns_iter: int | None = None,
-                  workers: int | None = None) -> dict:
-    paths = _collect_paths(instances_dir)
+                  workers: int | None = None,
+                  protocol_path: str | Path | None = None) -> dict:
+    if protocol_path is not None:
+        if instances_dir is not None:
+            raise ValueError("Use protocol_path or instances_dir, not both")
+        protocol = load_protocol(protocol_path)
+        source_splits = protocol["splits"]
+        # The solver test set is not labelled, filtered or fed to the teacher.
+        records = source_splits["train"] + source_splits["val"]
+        assigned = {role: [r["iid"] for r in source_splits[role]]
+                    for role in ("train", "val")}
+        assigned["test"] = []
+    else:
+        protocol = None
+        records = collect_instances(instances_dir)
+        assigned = split_instances([r["iid"] for r in records], cfg)
+        source_splits = {role: [r for r in records if r["iid"] in ids]
+                         for role, ids in assigned.items()}
+    paths = [Path(r["path"]) for r in records]
     workers = workers if workers is not None else min(30, os.cpu_count() or 1)
     cfg_data = copy.deepcopy(cfg.data)
     samples: dict[str, InstanceSample] = {}
@@ -226,10 +224,10 @@ def build_dataset(instances_dir, cfg: Config,
 
     if workers <= 1:
         _worker_init()
-        for p in paths:
-            _record(p.stem, build_instance_sample(p, cfg, alns_iter))
+        for record, p in zip(records, paths):
+            _record(record["iid"], build_instance_sample(p, cfg, alns_iter))
     else:
-        tasks = [(str(p), cfg_data, alns_iter) for p in paths]
+        tasks = [(str(p), cfg_data, alns_iter, r["iid"]) for r, p in zip(records, paths)]
         with ProcessPoolExecutor(max_workers=workers,
                                  initializer=_worker_init) as ex:
             futures = [ex.submit(_build_sample_worker, t) for t in tasks]
@@ -238,9 +236,20 @@ def build_dataset(instances_dir, cfg: Config,
                 _record(iid, s)
 
     samples = {k: samples[k] for k in sorted(samples)}  # stable ordering
-    split = split_instances(list(samples.keys()), cfg)
+    # Keep assignments fixed even when the teacher fails to find a feasible
+    # demonstration. In particular, never replace missing train/val with test.
+    split = {role: [iid for iid in ids if iid in samples]
+             for role, ids in assigned.items()}
     return {"samples": samples, "split": split,
-            "num_domains": _num_domains(cfg)}
+            "num_domains": _num_domains(cfg),
+            "provenance": {
+                "protocol_sha256": protocol["sha256"] if protocol else None,
+                "source_splits": source_splits,
+                "teacher_inputs": records,
+                "config": copy.deepcopy(cfg.data),
+                "config_sha256": content_hash(cfg.data),
+                "code": code_version(), "alns_iter": alns_iter,
+            }}
 
 
 def _num_domains(cfg: Config) -> int:
@@ -250,7 +259,9 @@ def _num_domains(cfg: Config) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Build GCN training dataset")
-    ap.add_argument("--instances", nargs="+", default=["data/instances"])
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--instances", nargs="+", default=None)
+    source.add_argument("--protocol", default=None)
     ap.add_argument("--out", default="data/gcn")
     ap.add_argument("--config", default=None)
     ap.add_argument("--alns-iter", type=int, default=None,
@@ -259,8 +270,10 @@ def main() -> None:
     args = ap.parse_args()
 
     cfg = load_config(args.config)
-    print(f"Building GCN dataset from {args.instances} ...")
-    data = build_dataset(args.instances, cfg, args.alns_iter, workers=args.workers)
+    instances = args.instances if args.protocol else (args.instances or ["data/instances"])
+    print(f"Building GCN dataset from {args.protocol or instances} ...")
+    data = build_dataset(instances, cfg, args.alns_iter, workers=args.workers,
+                         protocol_path=args.protocol)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     with open(out / "dataset.pkl", "wb") as fh:

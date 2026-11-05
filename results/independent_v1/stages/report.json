@@ -1,0 +1,16 @@
+{
+  "signature": "064d3f333bb5e0182b2866dffcea3f2b8c2c941a6b0adeadb3ab7a42eb2e5a61",
+  "state": "complete",
+  "started_utc": "2026-11-03T20:06:06.872461+00:00",
+  "command": [
+    "E:\\software\\Anaconda\\python.exe",
+    "D:\\zyx\\gcn-alns\\tools\\report_independent_v1.py",
+    "--root",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1"
+  ],
+  "completed_utc": "2026-11-03T20:06:23.836260+00:00",
+  "outputs": {
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\REPORT.md": "4619d86a0ec23810e8eb4561e380ad8f0c7b4ca46870e8112c0c24222c4c2a3a",
+    "D:\\zyx\\gcn-alns\\results\\independent_v1\\summary.json": "c040a7d4ad791c91e6b509af59e5036116122f1fdf5ac3558eb617c37237d5e6"
+  }
+}
