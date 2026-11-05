@@ -1,0 +1,127 @@
+algorithm,scale,scenario,n_instances,violation_percent
+HEFT,small,tight,15,100.0
+HEFT,small,medium,15,100.0
+HEFT,small,loose,15,80.0
+HEFT,medium,tight,10,100.0
+HEFT,medium,medium,10,90.0
+HEFT,medium,loose,10,60.0
+HEFT,large,tight,5,80.0
+HEFT,large,medium,5,80.0
+HEFT,large,loose,5,60.0
+PEFT,small,tight,15,100.0
+PEFT,small,medium,15,100.0
+PEFT,small,loose,15,93.33333333333333
+PEFT,medium,tight,10,100.0
+PEFT,medium,medium,10,80.0
+PEFT,medium,loose,10,60.0
+PEFT,large,tight,5,80.0
+PEFT,large,medium,5,80.0
+PEFT,large,loose,5,60.0
+No-FT,small,tight,15,100.0
+No-FT,small,medium,15,100.0
+No-FT,small,loose,15,80.0
+No-FT,medium,tight,10,100.0
+No-FT,medium,medium,10,90.0
+No-FT,medium,loose,10,60.0
+No-FT,large,tight,5,80.0
+No-FT,large,medium,5,80.0
+No-FT,large,loose,5,60.0
+Reactive-Only,small,tight,15,100.0
+Reactive-Only,small,medium,15,100.0
+Reactive-Only,small,loose,15,86.66666666666667
+Reactive-Only,medium,tight,10,100.0
+Reactive-Only,medium,medium,10,90.0
+Reactive-Only,medium,loose,10,60.0
+Reactive-Only,large,tight,5,80.0
+Reactive-Only,large,medium,5,80.0
+Reactive-Only,large,loose,5,60.0
+Full-Proactive,small,tight,15,100.0
+Full-Proactive,small,medium,15,100.0
+Full-Proactive,small,loose,15,100.0
+Full-Proactive,medium,tight,10,100.0
+Full-Proactive,medium,medium,10,100.0
+Full-Proactive,medium,loose,10,100.0
+Full-Proactive,large,tight,5,100.0
+Full-Proactive,large,medium,5,100.0
+Full-Proactive,large,loose,5,100.0
+Critical-Path Backup,small,tight,15,100.0
+Critical-Path Backup,small,medium,15,100.0
+Critical-Path Backup,small,loose,15,100.0
+Critical-Path Backup,medium,tight,10,100.0
+Critical-Path Backup,medium,medium,10,100.0
+Critical-Path Backup,medium,loose,10,80.0
+Critical-Path Backup,large,tight,5,100.0
+Critical-Path Backup,large,medium,5,100.0
+Critical-Path Backup,large,loose,5,80.0
+Criticality-Based Hybrid,small,tight,15,100.0
+Criticality-Based Hybrid,small,medium,15,100.0
+Criticality-Based Hybrid,small,loose,15,100.0
+Criticality-Based Hybrid,medium,tight,10,100.0
+Criticality-Based Hybrid,medium,medium,10,100.0
+Criticality-Based Hybrid,medium,loose,10,90.0
+Criticality-Based Hybrid,large,tight,5,100.0
+Criticality-Based Hybrid,large,medium,5,100.0
+Criticality-Based Hybrid,large,loose,5,80.0
+Reliability-Aware,small,tight,15,100.0
+Reliability-Aware,small,medium,15,100.0
+Reliability-Aware,small,loose,15,100.0
+Reliability-Aware,medium,tight,10,100.0
+Reliability-Aware,medium,medium,10,100.0
+Reliability-Aware,medium,loose,10,50.0
+Reliability-Aware,large,tight,5,80.0
+Reliability-Aware,large,medium,5,80.0
+Reliability-Aware,large,loose,5,60.0
+RECR-D,small,tight,15,100.0
+RECR-D,small,medium,15,100.0
+RECR-D,small,loose,15,100.0
+RECR-D,medium,tight,10,100.0
+RECR-D,medium,medium,10,100.0
+RECR-D,medium,loose,10,100.0
+RECR-D,large,tight,5,100.0
+RECR-D,large,medium,5,100.0
+RECR-D,large,loose,5,100.0
+HFWPF,small,tight,15,100.0
+HFWPF,small,medium,15,100.0
+HFWPF,small,loose,15,100.0
+HFWPF,medium,tight,10,100.0
+HFWPF,medium,medium,10,90.0
+HFWPF,medium,loose,10,80.0
+HFWPF,large,tight,5,100.0
+HFWPF,large,medium,5,100.0
+HFWPF,large,loose,5,80.0
+GA-Placement,small,tight,15,100.0
+GA-Placement,small,medium,15,100.0
+GA-Placement,small,loose,15,80.0
+GA-Placement,medium,tight,10,100.0
+GA-Placement,medium,medium,10,100.0
+GA-Placement,medium,loose,10,98.00000000000001
+GA-Placement,large,tight,5,100.0
+GA-Placement,large,medium,5,100.0
+GA-Placement,large,loose,5,100.0
+RA-MOMA,small,tight,15,100.0
+RA-MOMA,small,medium,15,100.0
+RA-MOMA,small,loose,15,98.00000000000001
+RA-MOMA,medium,tight,10,100.0
+RA-MOMA,medium,medium,10,90.0
+RA-MOMA,medium,loose,10,74.0
+RA-MOMA,large,tight,5,80.0
+RA-MOMA,large,medium,5,80.0
+RA-MOMA,large,loose,5,60.0
+ALNS,small,tight,15,100.0
+ALNS,small,medium,15,91.33333333333334
+ALNS,small,loose,15,16.666666666666664
+ALNS,medium,tight,10,96.0
+ALNS,medium,medium,10,41.0
+ALNS,medium,loose,10,0.0
+ALNS,large,tight,5,60.0
+ALNS,large,medium,5,36.0
+ALNS,large,loose,5,4.0
+GCN-ALNS,small,tight,15,100.0
+GCN-ALNS,small,medium,15,82.66666666666667
+GCN-ALNS,small,loose,15,23.333333333333332
+GCN-ALNS,medium,tight,10,90.99999999999999
+GCN-ALNS,medium,medium,10,34.0
+GCN-ALNS,medium,loose,10,2.0
+GCN-ALNS,large,tight,5,55.99999999999999
+GCN-ALNS,large,medium,5,36.0
+GCN-ALNS,large,loose,5,16.0

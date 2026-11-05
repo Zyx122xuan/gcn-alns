@@ -1,0 +1,43 @@
+algorithm,scale,metric,mean,ci95_low,ci95_high,n_instances
+HEFT,small,feas_safety_margin,0.9454486944239294,0.08950246778569237,1.9806256769603134,3
+PEFT,small,feas_safety_margin,0.08950246778566395,,,1
+No-FT,small,feas_safety_margin,0.9454486944239294,0.08950246778569237,1.9806256769603134,3
+Reactive-Only,small,feas_safety_margin,3.29063079508523,2.587605909175137,3.9936556809953228,2
+Full-Proactive,small,feas_safety_margin,,,,0
+Critical-Path Backup,small,feas_safety_margin,,,,0
+Criticality-Based Hybrid,small,feas_safety_margin,,,,0
+Reliability-Aware,small,feas_safety_margin,,,,0
+RECR-D,small,feas_safety_margin,,,,0
+HFWPF,small,feas_safety_margin,,,,0
+GA-Placement,small,feas_safety_margin,0.9454486944239296,0.08950246778569237,1.980625676960314,3
+RA-MOMA,small,feas_safety_margin,0.47460925918134933,0.08950246778569237,1.1599844579082372,3
+ALNS,small,feas_safety_margin,0.8036254353485773,0.5902103078378097,1.0373735259880694,20
+GCN-ALNS,small,feas_safety_margin,0.8491890247665383,0.6063445782462209,1.106094661232416,20
+HEFT,medium,feas_safety_margin,3.4472807121431934,0.2632436602954861,9.604723663377207,5
+PEFT,medium,feas_safety_margin,7.025151470858911,4.241640272966034,9.682781629354912,6
+No-FT,medium,feas_safety_margin,3.4472807121431934,0.2632436602954861,9.604723663377207,5
+Reactive-Only,medium,feas_safety_margin,6.756160785027978,3.215807984547439,10.726834454262432,5
+Full-Proactive,medium,feas_safety_margin,,,,0
+Critical-Path Backup,medium,feas_safety_margin,0.3856271102695583,0.17831473316608992,0.5929394873730267,2
+Criticality-Based Hybrid,medium,feas_safety_margin,0.5495363985996526,,,1
+Reliability-Aware,medium,feas_safety_margin,8.515938387419743,5.8602048527270405,11.51703697812187,5
+RECR-D,medium,feas_safety_margin,,,,0
+HFWPF,medium,feas_safety_margin,0.30313474656892875,0.17831473316608992,0.5025901779361419,3
+GA-Placement,medium,feas_safety_margin,4.784388858764409,,,1
+RA-MOMA,medium,feas_safety_margin,4.205537935372906,1.6422031058955349,6.94950139180249,9
+ALNS,medium,feas_safety_margin,1.9741813297166173,1.3625512655356824,2.6543011121303084,19
+GCN-ALNS,medium,feas_safety_margin,2.267791353539409,1.338487814717687,3.3883508661580755,21
+HEFT,large,feas_safety_margin,34.02050887625054,8.390801355588145,65.27589017511502,4
+PEFT,large,feas_safety_margin,32.41803211543353,11.020814247529312,56.781299116438056,4
+No-FT,large,feas_safety_margin,34.02050887625054,8.390801355588145,65.27589017511502,4
+Reactive-Only,large,feas_safety_margin,29.894494687920098,11.18370848203185,61.65198944761333,4
+Full-Proactive,large,feas_safety_margin,,,,0
+Critical-Path Backup,large,feas_safety_margin,38.16595228377591,,,1
+Criticality-Based Hybrid,large,feas_safety_margin,31.125049353943325,,,1
+Reliability-Aware,large,feas_safety_margin,34.59326524782967,14.26814106504629,64.50650719752909,4
+RECR-D,large,feas_safety_margin,,,,0
+HFWPF,large,feas_safety_margin,26.456427022021984,,,1
+GA-Placement,large,feas_safety_margin,,,,0
+RA-MOMA,large,feas_safety_margin,34.23790163816341,8.390801355588145,64.88521315935648,4
+ALNS,large,feas_safety_margin,5.5121329110377815,1.8943813815382742,10.322941186385464,13
+GCN-ALNS,large,feas_safety_margin,7.793551942397291,2.4633340248437534,14.395484361204218,12

@@ -1,0 +1,43 @@
+algorithm,scale,metric,mean,ci95_low,ci95_high,n_instances
+HEFT,small,feas_cost_per_task,4.046786779494664,3.6899487264721382,4.475005961196018,3
+PEFT,small,feas_cost_per_task,4.325521372361939,,,1
+No-FT,small,feas_cost_per_task,4.046786779494664,3.6899487264721382,4.475005961196018,3
+Reactive-Only,small,feas_cost_per_task,3.8700208978902113,3.669128237049319,4.070913558731103,2
+Full-Proactive,small,feas_cost_per_task,,,,0
+Critical-Path Backup,small,feas_cost_per_task,,,,0
+Criticality-Based Hybrid,small,feas_cost_per_task,,,,0
+Reliability-Aware,small,feas_cost_per_task,,,,0
+RECR-D,small,feas_cost_per_task,,,,0
+HFWPF,small,feas_cost_per_task,,,,0
+GA-Placement,small,feas_cost_per_task,4.046786779494664,3.6899487264721373,4.475005961196019,3
+RA-MOMA,small,feas_cost_per_task,4.024873171986428,2.951464840341329,4.666489445853739,3
+ALNS,small,feas_cost_per_task,4.573323795206688,4.165802974481917,4.966618177708557,20
+GCN-ALNS,small,feas_cost_per_task,4.494790604128877,4.107714962229522,4.889171537818327,20
+HEFT,medium,feas_cost_per_task,4.367208041595526,4.109598088996808,4.6848178325330165,5
+PEFT,medium,feas_cost_per_task,4.150311816382284,3.8969748654801832,4.462510311415605,6
+No-FT,medium,feas_cost_per_task,4.367208041595526,4.109598088996808,4.6848178325330165,5
+Reactive-Only,medium,feas_cost_per_task,4.365307882128585,3.9654333038503062,4.776409009148774,5
+Full-Proactive,medium,feas_cost_per_task,,,,0
+Critical-Path Backup,medium,feas_cost_per_task,4.930367066116873,4.756151165861555,5.104582966372192,2
+Criticality-Based Hybrid,medium,feas_cost_per_task,6.908030218139286,,,1
+Reliability-Aware,medium,feas_cost_per_task,4.483571455365526,4.1146586380907895,4.852484272640265,5
+RECR-D,medium,feas_cost_per_task,,,,0
+HFWPF,medium,feas_cost_per_task,4.6015413485481895,4.271336494929749,4.963234467004546,3
+GA-Placement,medium,feas_cost_per_task,10.433817290214876,,,1
+RA-MOMA,medium,feas_cost_per_task,4.204771939216007,3.982518023998938,4.442636276325839,9
+ALNS,medium,feas_cost_per_task,4.187748278519801,3.88641240007682,4.478647135505578,19
+GCN-ALNS,medium,feas_cost_per_task,4.143666855520267,3.833195670413741,4.445912265701153,21
+HEFT,large,feas_cost_per_task,4.183679369986655,3.875662109149596,4.560311432832302,4
+PEFT,large,feas_cost_per_task,4.1474050337193145,3.8512459076201395,4.506568308784389,4
+No-FT,large,feas_cost_per_task,4.183679369986655,3.875662109149596,4.560311432832302,4
+Reactive-Only,large,feas_cost_per_task,4.228265822788377,3.9279441633382164,4.607832831831212,4
+Full-Proactive,large,feas_cost_per_task,,,,0
+Critical-Path Backup,large,feas_cost_per_task,7.570465391188098,,,1
+Criticality-Based Hybrid,large,feas_cost_per_task,7.607877262721573,,,1
+Reliability-Aware,large,feas_cost_per_task,4.207355349867083,3.9032260481412306,4.577227570942077,4
+RECR-D,large,feas_cost_per_task,,,,0
+HFWPF,large,feas_cost_per_task,4.763749472063449,,,1
+GA-Placement,large,feas_cost_per_task,,,,0
+RA-MOMA,large,feas_cost_per_task,4.178001778262571,3.86996532889475,4.552535918490885,4
+ALNS,large,feas_cost_per_task,4.105125574522441,3.8408985221531964,4.33836421815314,13
+GCN-ALNS,large,feas_cost_per_task,3.9792343172553104,3.681537124106656,4.241107534792217,12

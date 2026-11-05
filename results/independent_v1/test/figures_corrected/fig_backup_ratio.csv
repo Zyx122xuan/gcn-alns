@@ -1,0 +1,15 @@
+algorithm,metric,mean,ci95_low,ci95_high,n_instances
+HEFT,active_backup_ratio,0.0,,,90
+PEFT,active_backup_ratio,0.0,,,90
+No-FT,active_backup_ratio,0.0,,,90
+Reactive-Only,active_backup_ratio,0.0,,,90
+Full-Proactive,active_backup_ratio,100.0,,,90
+Critical-Path Backup,active_backup_ratio,21.552592592592596,18.7177037037037,24.535611111111113,90
+Criticality-Based Hybrid,active_backup_ratio,29.999999999999993,,,90
+Reliability-Aware,active_backup_ratio,0.0,,,90
+RECR-D,active_backup_ratio,14.563703703703707,12.941759259259259,16.38175925925926,90
+HFWPF,active_backup_ratio,48.77481481481482,43.96407407407408,53.74266666666667,90
+GA-Placement,active_backup_ratio,31.15837037037037,29.462748148148147,33.008,90
+RA-MOMA,active_backup_ratio,4.940296296296297,4.068514814814813,5.824974074074074,90
+ALNS,active_backup_ratio,5.896740740740742,4.5722000000000005,7.18157037037037,90
+GCN-ALNS,active_backup_ratio,5.944740740740741,4.639955555555556,7.2265481481481455,90
